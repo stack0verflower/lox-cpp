@@ -1,0 +1,25 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.VC.db
+
+# Build output
+Debug/
+Release/
+x64/
+x86/
+
+enc_tmp_folder/
+
+# C++ intermediates
+*.obj
+*.pdb
+*.idb
+*.ilk
+*.tlog
+*.log
+
+# Executables
+*.exe
+
