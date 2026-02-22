@@ -1,4 +1,4 @@
-#include "Lexer.h"
+#include "scanner/Lexer.h"
 #include <unordered_map>
 
 static const std::unordered_map<std::string, TokenType> keywords = {
@@ -177,7 +177,7 @@ void Lexer::addToken(TokenType type) {
 	addToken(type, nullptr);
 }
 
-void Lexer::addToken(TokenType type, Literal literal) {
+void Lexer::addToken(TokenType type, LiteralVal literal) {
 	std::string text = source.substr(start, current - start);
 	tokens.emplace_back(type, text, literal, line);
 }

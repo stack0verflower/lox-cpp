@@ -1,0 +1,554 @@
+================================================================================
+                    GRAMMAR NOTATION REFERENCE GUIDE
+================================================================================
+
+This file explains the notation used to define programming language grammars
+in "Crafting Interpreters" and formal language theory.
+
+================================================================================
+                          BASIC SYMBOLS
+================================================================================
+
+ARROW: →
+    Meaning: "is defined as" or "produces"
+    Example: bread → "toast"
+    Reads as: "bread is defined as toast"
+
+PIPE: |
+    Meaning: "or" (alternation)
+    Example: "toast" | "biscuits"
+    Reads as: "toast or biscuits"
+
+SEMICOLON: ;
+    Meaning: End of rule
+    Example: bread → "toast" | "biscuits" ;
+    Marks: End of production rule
+
+PARENTHESES: ( )
+    Meaning: Grouping
+    Example: ( "scrambled" | "poached" ) "eggs"
+    Purpose: Group alternatives together
+
+QUOTES: "..."
+    Meaning: Literal text (terminal symbol)
+    Example: "toast"
+    Represents: The actual string "toast" in the source code
+
+================================================================================
+                        REPETITION OPERATORS
+================================================================================
+
+ASTERISK: *
+    Meaning: Zero or more repetitions
+    Example: "really"*
+    Matches:
+        ✅ "" (empty - zero times)
+        ✅ "really" (one time)
+        ✅ "really really" (two times)
+        ✅ "really really really" (three times)
+        ✅ ... (any number of times)
+    
+    Code equivalent:
+        while (match("really")) {
+            // Keep matching
+        }
+
+PLUS: +
+    Meaning: One or more repetitions
+    Example: "really"+
+    Matches:
+        ❌ "" (empty - need at least one)
+        ✅ "really" (one time)
+        ✅ "really really" (two times)
+        ✅ "really really really" (three times)
+        ✅ ... (any number of times)
+    
+    Code equivalent:
+        if (!match("really")) error();
+        while (match("really")) {
+            // Keep matching
+        }
+
+QUESTION MARK: ?
+    Meaning: Zero or one (optional)
+    Example: "on the side"?
+    Matches:
+        ✅ "" (zero times - it's optional)
+        ✅ "on the side" (one time)
+        ❌ "on the side on the side" (can't appear twice)
+    
+    Code equivalent:
+        if (match("on the side")) {
+            // Optional, so it's okay if it doesn't match
+        }
+
+================================================================================
+                        EXAMPLE RULES EXPLAINED
+================================================================================
+
+RULE 1: Simple Alternation
+────────────────────────────────────────────────────────────────────────────
+
+bread → "toast" | "biscuits" | "English muffin" ;
+
+Breakdown:
+    - bread is the NON-TERMINAL (thing being defined)
+    - → means "is defined as"
+    - Three alternatives separated by |
+    - ; ends the rule
+
+Valid inputs:
+    ✅ toast
+    ✅ biscuits
+    ✅ English muffin
+    ❌ toast biscuits (can't be multiple)
+    ❌ muffin (must be exact: "English muffin")
+
+In code:
+    string parseBread() {
+        if (match("toast")) return "toast";
+        if (match("biscuits")) return "biscuits";
+        if (match("English muffin")) return "English muffin";
+        error("Expected bread type");
+    }
+
+────────────────────────────────────────────────────────────────────────────
+
+RULE 2: Grouping with Sequence
+────────────────────────────────────────────────────────────────────────────
+
+protein → ( "scrambled" | "poached" | "fried" ) "eggs" ;
+
+Breakdown:
+    - ( ... ) groups the alternatives
+    - One of the three cooking methods MUST be chosen
+    - Followed by "eggs" (required)
+    - Space between items means sequence (one after another)
+
+Valid inputs:
+    ✅ scrambled eggs
+    ✅ poached eggs
+    ✅ fried eggs
+    ❌ eggs (missing cooking method)
+    ❌ scrambled (missing "eggs")
+    ❌ boiled eggs (not in the list)
+
+Parse tree for "scrambled eggs":
+    protein
+    ├── cooking_method: "scrambled"
+    └── "eggs"
+
+In code:
+    Protein parseProtein() {
+        string method;
+        if (match("scrambled")) method = "scrambled";
+        else if (match("poached")) method = "poached";
+        else if (match("fried")) method = "fried";
+        else error("Expected cooking method");
+        
+        consume("eggs", "Expected 'eggs' after cooking method");
+        
+        return Protein(method);
+    }
+
+────────────────────────────────────────────────────────────────────────────
+
+RULE 3: Zero or More (Kleene Star)
+────────────────────────────────────────────────────────────────────────────
+
+crispiness → "really" "really"* ;
+
+Breakdown:
+    - First "really" is REQUIRED (must appear once)
+    - "really"* means zero or more additional "really"s
+    - This pattern ensures at least ONE "really"
+
+Why not just "really"+ ?
+    - You could! "really"+ is equivalent and cleaner
+    - The book shows both patterns to teach the concepts
+
+Valid inputs:
+    ✅ really (one really)
+    ✅ really really (two reallys)
+    ✅ really really really (three reallys)
+    ✅ really really really really really really (six reallys)
+    ❌ (empty - need at least one)
+
+Parse tree for "really really really":
+    crispiness
+    ├── "really" (required)
+    ├── "really" (from *)
+    └── "really" (from *)
+
+In code:
+    Crispiness parseCrispiness() {
+        consume("really", "Expected 'really'");
+        int count = 1;
+        
+        while (match("really")) {
+            count++;
+        }
+        
+        return Crispiness(count);
+    }
+
+────────────────────────────────────────────────────────────────────────────
+
+RULE 4: One or More (Positive Closure)
+────────────────────────────────────────────────────────────────────────────
+
+crispiness → "really"+ ;
+
+Breakdown:
+    - + means one or more
+    - Cleaner than "really" "really"*
+    - Same meaning, different notation
+
+Valid inputs:
+    ✅ really
+    ✅ really really
+    ✅ really really really
+    ❌ (empty string - need at least one)
+
+Comparison with *:
+    "really"*  → Can match ZERO or more (including empty)
+    "really"+  → Must match ONE or more (at least one)
+
+In code:
+    Crispiness parseCrispiness() {
+        if (!match("really")) {
+            error("Expected at least one 'really'");
+        }
+        
+        int count = 1;
+        while (match("really")) {
+            count++;
+        }
+        
+        return Crispiness(count);
+    }
+
+────────────────────────────────────────────────────────────────────────────
+
+RULE 5: Optional (Zero or One)
+────────────────────────────────────────────────────────────────────────────
+
+breakfast → protein ( "with" breakfast "on the side" )? ;
+
+Breakdown:
+    - protein is REQUIRED
+    - ( "with" breakfast "on the side" )? is OPTIONAL
+    - ? means this entire group can appear zero or one times
+    - Notice: breakfast is RECURSIVE (refers to itself!)
+
+Valid inputs:
+    ✅ scrambled eggs
+    ✅ scrambled eggs with toast on the side
+    ✅ scrambled eggs with biscuits on the side
+    ✅ scrambled eggs with poached eggs on the side (recursive!)
+    ✅ scrambled eggs with scrambled eggs with toast on the side (deeply recursive!)
+
+Parse tree for "scrambled eggs with toast on the side":
+    breakfast
+    ├── protein: "scrambled eggs"
+    └── side (optional)
+        ├── "with"
+        ├── breakfast: "toast"
+        └── "on the side"
+
+RECURSION explained:
+    breakfast can contain another breakfast!
+    This allows infinite nesting:
+        eggs with eggs with eggs with eggs with toast on the side...
+
+In code:
+    Breakfast parseBreakfast() {
+        Protein protein = parseProtein();
+        Breakfast* side = nullptr;
+        
+        if (match("with")) {
+            side = parseBreakfast();  // RECURSIVE CALL!
+            consume("on the side", "Expected 'on the side'");
+        }
+        
+        return Breakfast(protein, side);
+    }
+
+────────────────────────────────────────────────────────────────────────────
+
+RULE 6: Complete Grammar with Alternation
+────────────────────────────────────────────────────────────────────────────
+
+breakfast → protein ( "with" breakfast "on the side" )?
+          | bread ;
+
+Breakdown:
+    - breakfast can be ONE OF two things:
+        1. protein (with optional side)
+        2. bread
+    - The | creates two separate production rules
+    - Parser tries first option, if it fails, tries second
+
+Valid inputs:
+    ✅ toast (bread)
+    ✅ biscuits (bread)
+    ✅ English muffin (bread)
+    ✅ scrambled eggs (protein without side)
+    ✅ poached eggs with toast on the side (protein with bread side)
+    ✅ fried eggs with scrambled eggs on the side (protein with protein side)
+
+Parse tree for "toast":
+    breakfast
+    └── bread: "toast"
+
+Parse tree for "scrambled eggs with biscuits on the side":
+    breakfast
+    ├── protein: "scrambled eggs"
+    └── side
+        ├── "with"
+        ├── breakfast
+        │   └── bread: "biscuits"
+        └── "on the side"
+
+In code:
+    Breakfast parseBreakfast() {
+        // Try protein first
+        if (check("scrambled") || check("poached") || check("fried")) {
+            Protein protein = parseProtein();
+            Breakfast* side = nullptr;
+            
+            if (match("with")) {
+                side = parseBreakfast();
+                consume("on the side");
+            }
+            
+            return Breakfast(protein, side);
+        }
+        
+        // Otherwise, must be bread
+        Bread bread = parseBread();
+        return Breakfast(bread);
+    }
+
+================================================================================
+                        TERMINOLOGY
+================================================================================
+
+TERMINAL
+    - A literal symbol that appears in the source code
+    - Cannot be broken down further
+    - Examples: "toast", "really", "eggs"
+    - In quotes in grammar notation
+
+NON-TERMINAL
+    - A named rule that can be expanded
+    - Appears on left side of →
+    - Examples: breakfast, protein, bread, crispiness
+    - Not in quotes
+
+PRODUCTION RULE
+    - A complete rule definition
+    - Format: non-terminal → expansion ;
+    - Example: bread → "toast" | "biscuits" ;
+
+GRAMMAR
+    - Complete set of production rules
+    - Defines all valid programs in the language
+
+DERIVATION
+    - Process of expanding non-terminals using rules
+    - Shows how to generate a valid sentence
+
+PARSE TREE
+    - Tree structure showing how input was parsed
+    - Root is start symbol
+    - Leaves are terminals
+    - Internal nodes are non-terminals
+
+RECURSIVE RULE
+    - A rule that references itself
+    - Example: breakfast → protein ( "with" breakfast "on the side" )?
+    - Allows infinite structures
+
+================================================================================
+                    OPERATOR PRECEDENCE (Summary)
+================================================================================
+
+From highest to lowest precedence:
+
+1. ( )          Grouping (highest precedence)
+2. * + ?        Repetition operators
+3. sequence     Implicit (space between items)
+4. |            Alternation (lowest precedence)
+
+Example interpretation:
+    a b | c d*
+    
+Parsed as:
+    (a b) | (c (d*))
+    
+Not as:
+    a (b | c) d*
+
+================================================================================
+                        PRACTICAL EXAMPLES
+================================================================================
+
+EXAMPLE 1: Arithmetic Expression Grammar
+────────────────────────────────────────────────────────────────────────────
+
+expression → term ( ( "+" | "-" ) term )* ;
+term       → factor ( ( "*" | "/" ) factor )* ;
+factor     → NUMBER | "(" expression ")" ;
+
+This grammar ensures correct precedence:
+    - Multiplication/division before addition/subtraction
+    - Parentheses override precedence
+
+Input: "3 + 4 * 5"
+Parse tree:
+    expression
+    ├── term: 3
+    ├── "+"
+    └── term
+        ├── factor: 4
+        ├── "*"
+        └── factor: 5
+
+Result: 3 + (4 * 5) = 23 (not 35)
+
+────────────────────────────────────────────────────────────────────────────
+
+EXAMPLE 2: Variable Declaration
+────────────────────────────────────────────────────────────────────────────
+
+declaration → "var" IDENTIFIER ( "=" expression )? ";" ;
+
+Valid inputs:
+    ✅ var x;
+    ✅ var y = 5;
+    ✅ var name = "Alice";
+    ❌ var;          (missing identifier)
+    ❌ var x = 5    (missing semicolon)
+
+────────────────────────────────────────────────────────────────────────────
+
+EXAMPLE 3: If Statement
+────────────────────────────────────────────────────────────────────────────
+
+ifStmt → "if" "(" expression ")" statement ( "else" statement )? ;
+
+Valid inputs:
+    ✅ if (x > 5) print x;
+    ✅ if (y == 0) return; else print y;
+    ❌ if x > 5 print x;  (missing parentheses)
+
+================================================================================
+                        COMMON PATTERNS
+================================================================================
+
+PATTERN 1: List with Separators
+────────────────────────────────────────────────────────────────────────────
+
+Problem: Parse comma-separated list: a, b, c
+
+Solution:
+    arguments → expression ( "," expression )* ;
+
+Example: "x, y, z"
+    ├── expression: x
+    ├── ","
+    ├── expression: y
+    ├── ","
+    └── expression: z
+
+────────────────────────────────────────────────────────────────────────────
+
+PATTERN 2: Optional Trailing Delimiter
+────────────────────────────────────────────────────────────────────────────
+
+Problem: Allow optional trailing comma: [1, 2, 3,]
+
+Solution:
+    array → "[" ( expression ( "," expression )* )? ","? "]" ;
+
+Valid:
+    ✅ []
+    ✅ [1]
+    ✅ [1, 2, 3]
+    ✅ [1, 2, 3,]  (trailing comma allowed)
+
+────────────────────────────────────────────────────────────────────────────
+
+PATTERN 3: Left-Associative Operators
+────────────────────────────────────────────────────────────────────────────
+
+Problem: Ensure 1 - 2 - 3 parses as (1 - 2) - 3
+
+Solution:
+    expression → term ( operator term )* ;
+
+This creates left-associative tree naturally through iteration.
+
+────────────────────────────────────────────────────────────────────────────
+
+PATTERN 4: Right-Associative Operators
+────────────────────────────────────────────────────────────────────────────
+
+Problem: Ensure 2^3^2 parses as 2^(3^2)
+
+Solution (recursion):
+    power → unary ( "^" power )? ;
+
+Recursion on the RIGHT side makes it right-associative.
+
+================================================================================
+                        CONVERSION TO CODE
+================================================================================
+
+Each grammar rule becomes a parsing function!
+
+GRAMMAR RULE:
+    expression → term ( ( "+" | "-" ) term )* ;
+
+PARSING FUNCTION:
+    Expr* parseExpression() {
+        Expr* left = parseTerm();
+        
+        while (match(PLUS) || match(MINUS)) {
+            Token op = previous();
+            Expr* right = parseTerm();
+            left = new BinaryExpr(left, op, right);
+        }
+        
+        return left;
+    }
+
+MAPPING:
+    →       becomes function body
+    |       becomes if/else or switch
+    *       becomes while loop
+    +       becomes do-while or mandatory + while
+    ?       becomes if statement
+    ( )     becomes grouping in code
+    "x"     becomes match("x")
+    term    becomes parseTerm() call
+
+================================================================================
+                        QUICK REFERENCE
+================================================================================
+
+Symbol  | Meaning           | Example           | Matches
+--------|-------------------|-------------------|------------------
+→       | is defined as     | a → b             | -
+|       | or                | a | b             | a OR b
+*       | zero or more      | a*                | "", "a", "aa", ...
++       | one or more       | a+                | "a", "aa", "aaa", ...
+?       | optional (0 or 1) | a?                | "", "a"
+( )     | grouping          | (a | b) c         | "ac" OR "bc"
+"x"     | literal           | "hello"           | hello
+;       | rule end          | rule → ... ;      | -
+
+================================================================================
+                        END OF REFERENCE
+================================================================================

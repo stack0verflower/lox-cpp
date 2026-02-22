@@ -1,0 +1,754 @@
+================================================================================
+                    PARSE TREE EXAMPLES - COMPLETE SOLUTIONS
+                        Expression Grammar Practice
+================================================================================
+
+GRAMMAR (Precedence from lowest to highest):
+────────────────────────────────────────────────────────────────────────────
+
+expression  → assignment
+assignment  → IDENTIFIER "=" assignment | equality
+equality    → comparison ( ( "==" | "!=" ) comparison )*
+comparison  → term ( ( ">" | ">=" | "<" | "<=" ) term )*
+term        → factor ( ( "+" | "-" ) factor )*
+factor      → unary ( ( "*" | "/" ) unary )*
+unary       → ( "!" | "-" ) unary | primary
+primary     → NUMBER | IDENTIFIER | "(" expression ")"
+
+PRECEDENCE TABLE (lowest to highest):
+────────────────────────────────────────────────────────────────────────────
+
+Level 1 (Lowest):  = (assignment) - RIGHT associative
+Level 2:           == !=
+Level 3:           > >= < <=
+Level 4:           + -
+Level 5:           * /
+Level 6:           ! - (unary)
+Level 7 (Highest): () (grouping), NUMBER, IDENTIFIER
+
+RULE: Higher precedence = Deeper in tree = Evaluated first
+
+================================================================================
+                        EXAMPLE 1: Basic Addition
+================================================================================
+
+INPUT: 3 + 5
+
+TOKENS: [NUMBER(3), PLUS, NUMBER(5), EOF]
+
+STEP-BY-STEP PARSING:
+────────────────────────────────────────────────────────────────────────────
+
+1. parseExpression()
+   └─> parseAssignment()
+       └─> parseEquality()
+           └─> parseComparison()
+               └─> parseTerm()
+                   ├─ left = parseFactor() → parseUnary() → parsePrimary()
+                   │         └─> NUMBER(3)
+                   ├─ match(PLUS)? YES
+                   ├─ op = "+"
+                   ├─ right = parseFactor() → ... → NUMBER(5)
+                   └─> return BinaryExpr(+, 3, 5)
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+        Binary(+)
+        /       \
+    Literal    Literal
+       3          5
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+3 + 5 = 8
+
+================================================================================
+                    EXAMPLE 2: Multiplication and Addition
+================================================================================
+
+INPUT: 3 + 4 * 5
+
+TOKENS: [NUMBER(3), PLUS, NUMBER(4), STAR, NUMBER(5), EOF]
+
+STEP-BY-STEP PARSING:
+────────────────────────────────────────────────────────────────────────────
+
+1. parseExpression() → ... → parseTerm()
+
+2. parseTerm():
+   a. left = parseFactor()
+      └─> parseFactor() at "3"
+          ├─ left = parseUnary() → parsePrimary() → NUMBER(3)
+          ├─ match(STAR)? NO (next is PLUS)
+          └─> return Literal(3)
+   
+   b. match(PLUS)? YES
+   
+   c. op = "+"
+   
+   d. right = parseFactor()
+      └─> parseFactor() at "4"
+          ├─ left = parseUnary() → parsePrimary() → NUMBER(4)
+          ├─ match(STAR)? YES
+          ├─ op = "*"
+          ├─ right = parseUnary() → parsePrimary() → NUMBER(5)
+          └─> return BinaryExpr(*, 4, 5)
+   
+   e. return BinaryExpr(+, Literal(3), BinaryExpr(*, 4, 5))
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+            Binary(+)
+           /         \
+      Literal(3)   Binary(*)
+                   /        \
+              Literal(4)  Literal(5)
+
+EVALUATION (bottom-up):
+────────────────────────────────────────────────────────────────────────────
+Step 1: 4 * 5 = 20
+Step 2: 3 + 20 = 23
+Result: 23 ✅
+
+KEY INSIGHT: * has higher precedence, so it's deeper in tree!
+
+================================================================================
+                    EXAMPLE 3: Multiple Same-Level Operators
+================================================================================
+
+INPUT: 2 + 3 + 4
+
+TOKENS: [NUMBER(2), PLUS, NUMBER(3), PLUS, NUMBER(4), EOF]
+
+STEP-BY-STEP PARSING:
+────────────────────────────────────────────────────────────────────────────
+
+parseTerm():
+1. left = parseFactor() → Literal(2)
+2. match(PLUS)? YES
+3. op = "+"
+4. right = parseFactor() → Literal(3)
+5. left = BinaryExpr(+, Literal(2), Literal(3))  ← Update left!
+6. match(PLUS)? YES (still in while loop!)
+7. op = "+"
+8. right = parseFactor() → Literal(4)
+9. left = BinaryExpr(+, BinaryExpr(+, 2, 3), Literal(4))  ← Update again!
+10. return left
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+            Binary(+)
+           /         \
+      Binary(+)    Literal(4)
+      /       \
+  Literal(2) Literal(3)
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+Step 1: 2 + 3 = 5
+Step 2: 5 + 4 = 9
+Result: 9 ✅
+
+KEY INSIGHT: Left-associative! Builds tree to the LEFT!
+(2 + 3) + 4, not 2 + (3 + 4)
+
+================================================================================
+                    EXAMPLE 4: Unary Minus
+================================================================================
+
+INPUT: -5 + 3
+
+TOKENS: [MINUS, NUMBER(5), PLUS, NUMBER(3), EOF]
+
+STEP-BY-STEP PARSING:
+────────────────────────────────────────────────────────────────────────────
+
+parseTerm():
+1. left = parseFactor()
+   └─> parseFactor()
+       └─> parseUnary()
+           ├─ match(MINUS)? YES
+           ├─ op = "-"
+           ├─ operand = parseUnary()
+           │   └─> parseUnary() → parsePrimary() → NUMBER(5)
+           └─> return UnaryExpr(-, Literal(5))
+
+2. match(PLUS)? YES
+3. op = "+"
+4. right = parseFactor() → ... → Literal(3)
+5. return BinaryExpr(+, UnaryExpr(-, 5), Literal(3))
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+            Binary(+)
+           /         \
+      Unary(-)     Literal(3)
+         |
+     Literal(5)
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+Step 1: -5 (unary)
+Step 2: -5 + 3 = -2
+Result: -2 ✅
+
+================================================================================
+                    EXAMPLE 5: Parentheses Override Precedence
+================================================================================
+
+INPUT: (2 + 3) * 4
+
+TOKENS: [LPAREN, NUMBER(2), PLUS, NUMBER(3), RPAREN, STAR, NUMBER(4), EOF]
+
+STEP-BY-STEP PARSING:
+────────────────────────────────────────────────────────────────────────────
+
+parseFactor():
+1. left = parseUnary()
+   └─> parseUnary() → parsePrimary()
+       ├─ match(LPAREN)? YES
+       ├─ advance() to consume "("
+       ├─ expr = parseExpression()  ← RESTART FROM TOP!
+       │   └─> ... → BinaryExpr(+, Literal(2), Literal(3))
+       ├─ consume(RPAREN)
+       └─> return Grouping(BinaryExpr(+, 2, 3))
+
+2. match(STAR)? YES
+3. op = "*"
+4. right = parseUnary() → parsePrimary() → NUMBER(4)
+5. return BinaryExpr(*, Grouping(...), Literal(4))
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+            Binary(*)
+           /         \
+      Grouping     Literal(4)
+         |
+      Binary(+)
+      /       \
+  Literal(2) Literal(3)
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+Step 1: 2 + 3 = 5 (inside parentheses first!)
+Step 2: 5 * 4 = 20
+Result: 20 ✅
+
+COMPARE WITHOUT PARENTHESES: 2 + 3 * 4
+────────────────────────────────────────────────────────────────────────────
+
+            Binary(+)
+           /         \
+      Literal(2)   Binary(*)
+                   /        \
+              Literal(3)  Literal(4)
+
+Would evaluate as: 2 + 12 = 14 (different!)
+
+================================================================================
+                    EXAMPLE 6: Comparison Operators
+================================================================================
+
+INPUT: 5 > 3 + 1
+
+TOKENS: [NUMBER(5), GREATER, NUMBER(3), PLUS, NUMBER(1), EOF]
+
+STEP-BY-STEP PARSING:
+────────────────────────────────────────────────────────────────────────────
+
+parseComparison():
+1. left = parseTerm()
+   └─> parseTerm() → parseFactor() → ... → Literal(5)
+
+2. match(GREATER)? YES
+3. op = ">"
+4. right = parseTerm()
+   └─> parseTerm()
+       ├─ left = parseFactor() → Literal(3)
+       ├─ match(PLUS)? YES
+       ├─ right = parseFactor() → Literal(1)
+       └─> return BinaryExpr(+, 3, 1)
+
+5. return BinaryExpr(>, Literal(5), BinaryExpr(+, 3, 1))
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+            Binary(>)
+           /         \
+      Literal(5)   Binary(+)
+                   /        \
+              Literal(3)  Literal(1)
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+Step 1: 3 + 1 = 4
+Step 2: 5 > 4 = true
+Result: true ✅
+
+KEY INSIGHT: + has higher precedence than >, so + is deeper!
+
+================================================================================
+                    EXAMPLE 7: Equality Check
+================================================================================
+
+INPUT: 3 + 2 == 5
+
+TOKENS: [NUMBER(3), PLUS, NUMBER(2), EQUAL_EQUAL, NUMBER(5), EOF]
+
+STEP-BY-STEP PARSING:
+────────────────────────────────────────────────────────────────────────────
+
+parseEquality():
+1. left = parseComparison()
+   └─> parseComparison() → parseTerm()
+       └─> parseTerm()
+           ├─ left = parseFactor() → Literal(3)
+           ├─ match(PLUS)? YES
+           ├─ right = parseFactor() → Literal(2)
+           └─> return BinaryExpr(+, 3, 2)
+
+2. match(EQUAL_EQUAL)? YES
+3. op = "=="
+4. right = parseComparison()
+   └─> ... → Literal(5)
+
+5. return BinaryExpr(==, BinaryExpr(+, 3, 2), Literal(5))
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+            Binary(==)
+           /          \
+      Binary(+)     Literal(5)
+      /       \
+  Literal(3) Literal(2)
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+Step 1: 3 + 2 = 5
+Step 2: 5 == 5 = true
+Result: true ✅
+
+KEY INSIGHT: + has higher precedence than ==, so + is evaluated first!
+
+================================================================================
+                    EXAMPLE 8: Multiple Unary Operators
+================================================================================
+
+INPUT: --5
+
+TOKENS: [MINUS, MINUS, NUMBER(5), EOF]
+
+STEP-BY-STEP PARSING:
+────────────────────────────────────────────────────────────────────────────
+
+parseUnary():
+1. match(MINUS)? YES
+2. op = "-"
+3. operand = parseUnary()  ← RECURSIVE CALL!
+   └─> parseUnary()
+       ├─ match(MINUS)? YES
+       ├─ op = "-"
+       ├─ operand = parseUnary()  ← RECURSIVE AGAIN!
+       │   └─> parseUnary() → parsePrimary() → NUMBER(5)
+       └─> return UnaryExpr(-, Literal(5))
+4. return UnaryExpr(-, UnaryExpr(-, Literal(5)))
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+      Unary(-)
+         |
+      Unary(-)
+         |
+     Literal(5)
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+Step 1: -5 = -5
+Step 2: -(-5) = 5
+Result: 5 ✅
+
+KEY INSIGHT: Unary operators are right-associative (parsed right-to-left)!
+
+================================================================================
+                    EXAMPLE 9: Complex Mixed Expression
+================================================================================
+
+INPUT: 2 + 3 * 4 - 5
+
+TOKENS: [NUMBER(2), PLUS, NUMBER(3), STAR, NUMBER(4), MINUS, NUMBER(5), EOF]
+
+STEP-BY-STEP PARSING:
+────────────────────────────────────────────────────────────────────────────
+
+parseTerm():
+
+Iteration 1:
+1. left = parseFactor() → Literal(2)
+2. match(PLUS)? YES
+3. right = parseFactor()
+   └─> parseFactor() at "3"
+       ├─ left = parseUnary() → Literal(3)
+       ├─ match(STAR)? YES
+       ├─ right = parseUnary() → Literal(4)
+       └─> return BinaryExpr(*, 3, 4)
+4. left = BinaryExpr(+, Literal(2), BinaryExpr(*, 3, 4))
+
+Iteration 2:
+5. match(MINUS)? YES
+6. right = parseFactor() → Literal(5)
+7. left = BinaryExpr(-, BinaryExpr(+, ...), Literal(5))
+8. return left
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+                Binary(-)
+               /         \
+          Binary(+)    Literal(5)
+          /       \
+      Literal(2) Binary(*)
+                 /      \
+            Literal(3) Literal(4)
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+Step 1: 3 * 4 = 12
+Step 2: 2 + 12 = 14
+Step 3: 14 - 5 = 9
+Result: 9 ✅
+
+KEY INSIGHT: * has highest precedence (deepest), then + and - at same level
+(left-associative)
+
+================================================================================
+                    EXAMPLE 10: Assignment (Right-Associative!)
+================================================================================
+
+INPUT: a = b = 5
+
+TOKENS: [IDENTIFIER(a), EQUAL, IDENTIFIER(b), EQUAL, NUMBER(5), EOF]
+
+STEP-BY-STEP PARSING:
+────────────────────────────────────────────────────────────────────────────
+
+parseAssignment():
+1. See IDENTIFIER "a"
+2. Peek ahead - next is EQUAL
+3. This is an assignment!
+4. name = "a"
+5. consume(EQUAL)
+6. value = parseAssignment()  ← RECURSIVE! (right-associative)
+   └─> parseAssignment()
+       ├─ name = "b"
+       ├─ value = parseAssignment()  ← RECURSIVE AGAIN!
+       │   └─> parseAssignment() → parseEquality() → ... → Literal(5)
+       └─> return Assignment("b", Literal(5))
+7. return Assignment("a", Assignment("b", Literal(5)))
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+      Assignment
+      /        \
+    "a"     Assignment
+            /        \
+          "b"     Literal(5)
+
+EXECUTION (right-to-left!):
+────────────────────────────────────────────────────────────────────────────
+Step 1: b = 5  (b gets value 5)
+Step 2: a = 5  (a gets value from b's assignment, which is 5)
+Result: Both a and b are 5 ✅
+
+KEY INSIGHT: Assignment is RIGHT-associative! Builds tree to the RIGHT!
+
+================================================================================
+                    EXAMPLE 11: Assignment with Expression
+================================================================================
+
+INPUT: x = 3 + 4 * 5
+
+TOKENS: [IDENTIFIER(x), EQUAL, NUMBER(3), PLUS, NUMBER(4), STAR, 
+         NUMBER(5), EOF]
+
+STEP-BY-STEP PARSING:
+────────────────────────────────────────────────────────────────────────────
+
+parseAssignment():
+1. name = "x"
+2. consume(EQUAL)
+3. value = parseAssignment()
+   └─> parseAssignment() → parseEquality() → ... → parseTerm()
+       └─> parseTerm()
+           └─> BinaryExpr(+, Literal(3), BinaryExpr(*, 4, 5))
+4. return Assignment("x", BinaryExpr(+, ...))
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+        Assignment
+        /        \
+      "x"     Binary(+)
+              /        \
+         Literal(3)  Binary(*)
+                     /        \
+                Literal(4)  Literal(5)
+
+EXECUTION:
+────────────────────────────────────────────────────────────────────────────
+Step 1: 4 * 5 = 20
+Step 2: 3 + 20 = 23
+Step 3: x = 23
+Result: x is 23 ✅
+
+================================================================================
+                    EXAMPLE 12: Comparison Chain
+================================================================================
+
+INPUT: 5 > 3 > 1
+
+TOKENS: [NUMBER(5), GREATER, NUMBER(3), GREATER, NUMBER(1), EOF]
+
+STEP-BY-STEP PARSING:
+────────────────────────────────────────────────────────────────────────────
+
+parseComparison():
+1. left = parseTerm() → Literal(5)
+2. match(GREATER)? YES
+3. op = ">"
+4. right = parseTerm() → Literal(3)
+5. left = BinaryExpr(>, Literal(5), Literal(3))
+6. match(GREATER)? YES (still in while loop!)
+7. op = ">"
+8. right = parseTerm() → Literal(1)
+9. left = BinaryExpr(>, BinaryExpr(>, 5, 3), Literal(1))
+10. return left
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+            Binary(>)
+           /         \
+      Binary(>)    Literal(1)
+      /       \
+  Literal(5) Literal(3)
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+Step 1: 5 > 3 = true
+Step 2: true > 1 = ??? (error in real language!)
+
+WARNING: In Lox, this would compare boolean to number (type error!)
+The grammar ALLOWS it, but interpreter should catch it!
+
+Better example: 5 > 3 && 3 > 1 (but && not in current grammar)
+
+================================================================================
+                    EXAMPLE 13: Division and Subtraction
+================================================================================
+
+INPUT: 10 / 2 - 3
+
+TOKENS: [NUMBER(10), SLASH, NUMBER(2), MINUS, NUMBER(3), EOF]
+
+STEP-BY-STEP PARSING:
+────────────────────────────────────────────────────────────────────────────
+
+parseTerm():
+1. left = parseFactor()
+   └─> parseFactor()
+       ├─ left = parseUnary() → Literal(10)
+       ├─ match(SLASH)? YES
+       ├─ right = parseUnary() → Literal(2)
+       └─> return BinaryExpr(/, 10, 2)
+
+2. match(MINUS)? YES
+3. right = parseFactor() → Literal(3)
+4. return BinaryExpr(-, BinaryExpr(/, 10, 2), Literal(3))
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+            Binary(-)
+           /         \
+      Binary(/)    Literal(3)
+      /       \
+  Literal(10) Literal(2)
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+Step 1: 10 / 2 = 5
+Step 2: 5 - 3 = 2
+Result: 2 ✅
+
+KEY INSIGHT: / and - have same precedence level, but / is in factor (higher)
+Actually, / is in factor, - is in term, so / has higher precedence!
+
+CORRECTION: They're at DIFFERENT levels:
+- factor handles * /
+- term handles + -
+So * and / have HIGHER precedence than + and -
+
+CORRECTED TREE (same as above - it was right!):
+
+            Binary(-)
+           /         \
+      Binary(/)    Literal(3)
+      /       \
+  Literal(10) Literal(2)
+
+================================================================================
+                    EXAMPLE 14: Nested Parentheses
+================================================================================
+
+INPUT: ((2 + 3) * 4) - 5
+
+TOKENS: [LPAREN, LPAREN, NUMBER(2), PLUS, NUMBER(3), RPAREN, STAR, 
+         NUMBER(4), RPAREN, MINUS, NUMBER(5), EOF]
+
+STEP-BY-STEP PARSING:
+────────────────────────────────────────────────────────────────────────────
+
+parseTerm():
+1. left = parseFactor()
+   └─> parseFactor() → parseUnary() → parsePrimary()
+       ├─ match(LPAREN)? YES (outer paren)
+       ├─ expr = parseExpression()
+       │   └─> ... → parseFactor()
+       │       └─> parsePrimary()
+       │           ├─ match(LPAREN)? YES (inner paren)
+       │           ├─ expr = parseExpression()
+       │           │   └─> BinaryExpr(+, 2, 3)
+       │           └─> return Grouping(BinaryExpr(+, 2, 3))
+       │       ├─ match(STAR)? YES
+       │       └─> return BinaryExpr(*, Grouping(...), 4)
+       └─> return Grouping(BinaryExpr(*, ...))
+
+2. match(MINUS)? YES
+3. right = parseFactor() → Literal(5)
+4. return BinaryExpr(-, Grouping(...), Literal(5))
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+                Binary(-)
+               /         \
+          Grouping     Literal(5)
+             |
+          Binary(*)
+          /        \
+      Grouping   Literal(4)
+         |
+      Binary(+)
+      /       \
+  Literal(2) Literal(3)
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+Step 1: 2 + 3 = 5 (innermost parens first!)
+Step 2: 5 * 4 = 20
+Step 3: 20 - 5 = 15
+Result: 15 ✅
+
+================================================================================
+                    EXAMPLE 15: Complex Real-World Expression
+================================================================================
+
+INPUT: result = x * 2 + y / 3 - 1
+
+TOKENS: [IDENTIFIER(result), EQUAL, IDENTIFIER(x), STAR, NUMBER(2), PLUS,
+         IDENTIFIER(y), SLASH, NUMBER(3), MINUS, NUMBER(1), EOF]
+
+STEP-BY-STEP PARSING:
+────────────────────────────────────────────────────────────────────────────
+
+parseAssignment():
+1. name = "result"
+2. consume(EQUAL)
+3. value = parseAssignment() → parseEquality() → ... → parseTerm()
+
+parseTerm():
+Iteration 1:
+- left = parseFactor() → BinaryExpr(*, Identifier(x), Literal(2))
+- match(PLUS)? YES
+- right = parseFactor() → BinaryExpr(/, Identifier(y), Literal(3))
+- left = BinaryExpr(+, BinaryExpr(*, x, 2), BinaryExpr(/, y, 3))
+
+Iteration 2:
+- match(MINUS)? YES
+- right = parseFactor() → Literal(1)
+- left = BinaryExpr(-, BinaryExpr(+, ...), Literal(1))
+
+4. return Assignment("result", BinaryExpr(-, ...))
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+                Assignment
+               /          \
+          "result"     Binary(-)
+                       /        \
+                   Binary(+)   Literal(1)
+                   /        \
+              Binary(*)   Binary(/)
+              /      \    /       \
+        Identifier Literal Identifier Literal
+            x        2       y         3
+
+EVALUATION (assuming x=10, y=9):
+────────────────────────────────────────────────────────────────────────────
+Step 1: x * 2 = 10 * 2 = 20
+Step 2: y / 3 = 9 / 3 = 3
+Step 3: 20 + 3 = 23
+Step 4: 23 - 1 = 22
+Step 5: result = 22
+Result: result is 22 ✅
+
+================================================================================
+                        PRACTICE EXERCISES
+================================================================================
+
+Now try these yourself! Build the parse trees:
+
+EXERCISE 1: 1 + 2 * 3 - 4
+EXERCISE 2: a = b + c * d
+EXERCISE 3: -x * y + z
+EXERCISE 4: (a + b) * (c - d)
+EXERCISE 5: x = y = z = 0
+EXERCISE 6: !true == false
+EXERCISE 7: 5 >= 3 + 2
+EXERCISE 8: a * b + c * d - e
+
+================================================================================
+                        KEY TAKEAWAYS
+================================================================================
+
+1. PRECEDENCE = TREE DEPTH
+   Higher precedence → Deeper in tree → Evaluated first
+
+2. ASSOCIATIVITY
+   Left-associative: Builds tree to LEFT (*, /, +, -, comparisons)
+   Right-associative: Builds tree to RIGHT (assignment, unary)
+
+3. PARENTHESES
+   Override precedence by forcing evaluation order
+
+4. RECURSION
+   Each grammar level calls the NEXT HIGHER level
+   Creates proper precedence automatically!
+
+5. EVALUATION ORDER
+   Always bottom-up (leaves to root)
+   Deepest operations execute first
+
+================================================================================
+                        END OF EXAMPLES
+================================================================================

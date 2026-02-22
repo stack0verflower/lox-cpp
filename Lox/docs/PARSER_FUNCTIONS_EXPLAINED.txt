@@ -1,0 +1,786 @@
+================================================================================
+                    PARSER INTERNALS - COMPLETE GUIDE
+                How parseExpression(), parseTerm(), match() etc. Work
+================================================================================
+
+GRAMMAR (for reference):
+────────────────────────────────────────────────────────────────────────────
+
+expression  → assignment
+assignment  → IDENTIFIER "=" assignment | equality
+equality    → comparison ( ( "==" | "!=" ) comparison )*
+comparison  → term ( ( ">" | ">=" | "<" | "<=" ) term )*
+term        → factor ( ( "+" | "-" ) factor )*
+factor      → unary ( ( "*" | "/" ) unary )*
+unary       → ( "!" | "-" ) unary | primary
+primary     → NUMBER | IDENTIFIER | "(" expression ")"
+
+================================================================================
+                        PART 1: PARSER STATE
+================================================================================
+
+THE PARSER CLASS:
+────────────────────────────────────────────────────────────────────────────
+
+class Parser {
+private:
+    const std::vector<Token>& tokens;  // All tokens from lexer
+    size_t current;                    // Current position in tokens array
+    
+public:
+    Parser(const std::vector<Token>& tokens) 
+        : tokens(tokens), current(0) {}
+    
+    // ... parsing functions
+};
+
+EXAMPLE STATE:
+────────────────────────────────────────────────────────────────────────────
+
+Input: "3 + 5"
+Tokens: [NUMBER(3), PLUS, NUMBER(5), EOF]
+         ^
+         current = 0
+
+As we parse, current moves forward:
+[NUMBER(3), PLUS, NUMBER(5), EOF]
+ ^
+ current=0  → We're looking at NUMBER(3)
+
+[NUMBER(3), PLUS, NUMBER(5), EOF]
+            ^
+            current=1  → We're looking at PLUS
+
+[NUMBER(3), PLUS, NUMBER(5), EOF]
+                  ^
+                  current=2  → We're looking at NUMBER(5)
+
+================================================================================
+                    PART 2: HELPER FUNCTIONS
+================================================================================
+
+FUNCTION 1: peek()
+────────────────────────────────────────────────────────────────────────────
+
+Token peek() {
+    return tokens[current];  // Look at current token, DON'T move
+}
+
+WHAT IT DOES:
+- Returns the token at current position
+- Does NOT increment current
+- Like "looking ahead" without moving
+
+EXAMPLE:
+    Tokens: [NUMBER(3), PLUS, NUMBER(5)]
+    current = 0
+    
+    token = peek();  // Returns NUMBER(3)
+    // current is still 0!
+    
+    token = peek();  // Returns NUMBER(3) again
+    // current is still 0!
+
+WHY NEEDED:
+- Check what's coming without committing
+- Decide which path to take in grammar
+
+────────────────────────────────────────────────────────────────────────────
+
+FUNCTION 2: advance()
+────────────────────────────────────────────────────────────────────────────
+
+Token advance() {
+    Token token = tokens[current];  // Save current token
+    if (!isAtEnd()) {
+        current++;                  // Move forward
+    }
+    return token;                   // Return the token we just passed
+}
+
+WHAT IT DOES:
+- Returns current token
+- THEN moves current forward
+- Like "consuming" a token
+
+EXAMPLE:
+    Tokens: [NUMBER(3), PLUS, NUMBER(5)]
+    current = 0
+    
+    token = advance();  // Returns NUMBER(3), current becomes 1
+    token = advance();  // Returns PLUS, current becomes 2
+    token = advance();  // Returns NUMBER(5), current becomes 3
+
+WHY NEEDED:
+- Actually consume tokens as we parse
+- Move through the token stream
+
+────────────────────────────────────────────────────────────────────────────
+
+FUNCTION 3: match()
+────────────────────────────────────────────────────────────────────────────
+
+bool match(TokenType type) {
+    if (isAtEnd()) return false;
+    return peek().type == type;
+}
+
+// Or with multiple types:
+bool match(TokenType type1, TokenType type2, ...) {
+    if (peek().type == type1) return true;
+    if (peek().type == type2) return true;
+    // ... etc
+    return false;
+}
+
+WHAT IT DOES:
+- Checks if current token is a specific type
+- Does NOT consume the token
+- Returns true/false
+
+EXAMPLE:
+    Tokens: [NUMBER(3), PLUS, NUMBER(5)]
+    current = 1  (at PLUS)
+    
+    match(PLUS)   // → true
+    match(MINUS)  // → false
+    match(NUMBER) // → false
+    
+    // current is still 1! (didn't move)
+
+WHY NEEDED:
+- Decide which grammar rule to follow
+- Check for optional operators
+
+────────────────────────────────────────────────────────────────────────────
+
+FUNCTION 4: check()
+────────────────────────────────────────────────────────────────────────────
+
+bool check(TokenType type) {
+    if (isAtEnd()) return false;
+    return peek().type == type;
+}
+
+WHAT IT DOES:
+- Same as match() (in simple version)
+- Sometimes used for single-type checks
+
+────────────────────────────────────────────────────────────────────────────
+
+FUNCTION 5: consume()
+────────────────────────────────────────────────────────────────────────────
+
+Token consume(TokenType type, const std::string& message) {
+    if (match(type)) {
+        return advance();  // Token matches, consume it
+    }
+    
+    // Token doesn't match - ERROR!
+    throw std::runtime_error(message);
+}
+
+WHAT IT DOES:
+- Demands a specific token type
+- If found: consumes and returns it
+- If not found: throws error with message
+
+EXAMPLE:
+    Tokens: [LPAREN, NUMBER(3), RPAREN]
+    current = 0
+    
+    consume(LPAREN, "Expected '('");  // ✓ Returns LPAREN, current→1
+    consume(NUMBER, "Expected number"); // ✓ Returns NUMBER, current→2
+    consume(RPAREN, "Expected ')'");  // ✓ Returns RPAREN, current→3
+    
+    consume(SEMICOLON, "Expected ';'"); // ✗ ERROR! Not a semicolon
+
+WHY NEEDED:
+- Enforce required syntax
+- Give helpful error messages
+
+────────────────────────────────────────────────────────────────────────────
+
+FUNCTION 6: isAtEnd()
+────────────────────────────────────────────────────────────────────────────
+
+bool isAtEnd() {
+    return peek().type == TokenType::EOF_TOKEN;
+}
+
+WHAT IT DOES:
+- Checks if we've reached end of tokens
+- Returns true if current token is EOF
+
+EXAMPLE:
+    Tokens: [NUMBER(3), PLUS, NUMBER(5), EOF]
+    
+    current = 0 → isAtEnd() = false
+    current = 1 → isAtEnd() = false
+    current = 2 → isAtEnd() = false
+    current = 3 → isAtEnd() = true  (at EOF)
+
+================================================================================
+                    PART 3: PARSING FUNCTIONS
+================================================================================
+
+THE PATTERN:
+────────────────────────────────────────────────────────────────────────────
+
+Each grammar rule becomes a function!
+
+Grammar rule:
+    term → factor ( ( "+" | "-" ) factor )*
+
+Parsing function:
+    Expr* parseTerm() {
+        Expr* left = parseFactor();  // Parse first factor
+        
+        while (match(PLUS) || match(MINUS)) {  // Check for + or -
+            Token op = advance();              // Consume operator
+            Expr* right = parseFactor();       // Parse next factor
+            left = new BinaryExpr(left, op, right);  // Build tree
+        }
+        
+        return left;
+    }
+
+KEY INSIGHT: Each function calls the NEXT HIGHER precedence level!
+
+────────────────────────────────────────────────────────────────────────────
+
+FUNCTION: parseExpression()
+────────────────────────────────────────────────────────────────────────────
+
+Grammar:
+    expression → assignment
+
+Code:
+    Expr* parseExpression() {
+        return parseAssignment();  // Just delegate to assignment
+    }
+
+WHAT IT DOES:
+- Entry point for parsing any expression
+- Delegates to lowest precedence level (assignment)
+
+WHY: Expressions start at lowest precedence
+
+────────────────────────────────────────────────────────────────────────────
+
+FUNCTION: parseAssignment()
+────────────────────────────────────────────────────────────────────────────
+
+Grammar:
+    assignment → IDENTIFIER "=" assignment | equality
+
+Code:
+    Expr* parseAssignment() {
+        Expr* expr = parseEquality();  // Try parsing as equality first
+        
+        if (match(EQUAL)) {
+            Token equals = advance();  // Consume "="
+            Expr* value = parseAssignment();  // RECURSIVE! (right-assoc)
+            
+            if (auto* var = dynamic_cast<VariableExpr*>(expr)) {
+                return new AssignmentExpr(var->name, value);
+            }
+            
+            throw std::runtime_error("Invalid assignment target");
+        }
+        
+        return expr;  // Not assignment, just return what we parsed
+    }
+
+WHAT IT DOES:
+1. Tries to parse left side (might be just a value, or variable)
+2. Checks for "="
+3. If found: parses right side recursively (right-associative!)
+4. If not found: returns what we parsed
+
+EXAMPLE: a = b = 5
+
+    parseAssignment():
+    1. expr = parseEquality() → Identifier("a")
+    2. match(EQUAL)? YES
+    3. value = parseAssignment()  ← RECURSIVE!
+       └─> parseAssignment():
+           1. expr = parseEquality() → Identifier("b")
+           2. match(EQUAL)? YES
+           3. value = parseAssignment()  ← RECURSIVE AGAIN!
+              └─> parseAssignment() → parseEquality() → ... → Literal(5)
+           4. return Assignment("b", Literal(5))
+    4. return Assignment("a", Assignment("b", Literal(5)))
+
+────────────────────────────────────────────────────────────────────────────
+
+FUNCTION: parseEquality()
+────────────────────────────────────────────────────────────────────────────
+
+Grammar:
+    equality → comparison ( ( "==" | "!=" ) comparison )*
+
+Code:
+    Expr* parseEquality() {
+        Expr* left = parseComparison();  // Get left side
+        
+        while (match(EQUAL_EQUAL) || match(BANG_EQUAL)) {
+            Token op = advance();            // Consume operator
+            Expr* right = parseComparison(); // Get right side
+            left = new BinaryExpr(left, op, right);  // Build node
+        }
+        
+        return left;
+    }
+
+WHAT IT DOES:
+1. Parses left side (calls next higher precedence: comparison)
+2. While we see == or !=:
+   a. Consume the operator
+   b. Parse right side
+   c. Wrap in BinaryExpr
+   d. Make this the new left (for next iteration)
+3. Return the result
+
+EXAMPLE: 3 + 2 == 5
+
+    parseEquality():
+    1. left = parseComparison()
+       └─> parseComparison() → parseTerm()
+           └─> parseTerm() builds: BinaryExpr(+, 3, 2)
+       left = BinaryExpr(+, 3, 2)
+    
+    2. match(EQUAL_EQUAL)? YES
+    
+    3. op = advance()  → EQUAL_EQUAL token
+    
+    4. right = parseComparison()
+       └─> ... → Literal(5)
+    
+    5. left = new BinaryExpr(left, op, right)
+       left = BinaryExpr(==, BinaryExpr(+, 3, 2), Literal(5))
+    
+    6. match(EQUAL_EQUAL)? NO (no more operators)
+    
+    7. return left
+
+PATTERN: LEFT-ASSOCIATIVE (builds tree to left via while loop)
+
+────────────────────────────────────────────────────────────────────────────
+
+FUNCTION: parseComparison()
+────────────────────────────────────────────────────────────────────────────
+
+Grammar:
+    comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )*
+
+Code:
+    Expr* parseComparison() {
+        Expr* left = parseTerm();
+        
+        while (match(GREATER) || match(GREATER_EQUAL) || 
+               match(LESS) || match(LESS_EQUAL)) {
+            Token op = advance();
+            Expr* right = parseTerm();
+            left = new BinaryExpr(left, op, right);
+        }
+        
+        return left;
+    }
+
+SAME PATTERN as parseEquality(), just different operators!
+
+────────────────────────────────────────────────────────────────────────────
+
+FUNCTION: parseTerm()
+────────────────────────────────────────────────────────────────────────────
+
+Grammar:
+    term → factor ( ( "+" | "-" ) factor )*
+
+Code:
+    Expr* parseTerm() {
+        Expr* left = parseFactor();  // Parse first operand
+        
+        while (match(PLUS) || match(MINUS)) {
+            Token op = advance();
+            Expr* right = parseFactor();  // Parse next operand
+            left = new BinaryExpr(left, op, right);
+        }
+        
+        return left;
+    }
+
+EXAMPLE: 3 + 4 - 5
+
+    parseTerm():
+    Iteration 1:
+    1. left = parseFactor() → Literal(3)
+    2. match(PLUS)? YES
+    3. op = PLUS
+    4. right = parseFactor() → Literal(4)
+    5. left = BinaryExpr(+, Literal(3), Literal(4))
+    
+    Iteration 2:
+    6. match(MINUS)? YES
+    7. op = MINUS
+    8. right = parseFactor() → Literal(5)
+    9. left = BinaryExpr(-, BinaryExpr(+, 3, 4), Literal(5))
+    
+    10. match(PLUS/MINUS)? NO
+    11. return left
+
+────────────────────────────────────────────────────────────────────────────
+
+FUNCTION: parseFactor()
+────────────────────────────────────────────────────────────────────────────
+
+Grammar:
+    factor → unary ( ( "*" | "/" ) unary )*
+
+Code:
+    Expr* parseFactor() {
+        Expr* left = parseUnary();
+        
+        while (match(STAR) || match(SLASH)) {
+            Token op = advance();
+            Expr* right = parseUnary();
+            left = new BinaryExpr(left, op, right);
+        }
+        
+        return left;
+    }
+
+SAME PATTERN, handles * and /
+
+EXAMPLE: 2 * 3 / 4
+
+    parseFactor():
+    1. left = parseUnary() → Literal(2)
+    2. match(STAR)? YES
+    3. left = BinaryExpr(*, Literal(2), Literal(3))
+    4. match(SLASH)? YES
+    5. left = BinaryExpr(/, BinaryExpr(*, 2, 3), Literal(4))
+    6. return left
+
+────────────────────────────────────────────────────────────────────────────
+
+FUNCTION: parseUnary()
+────────────────────────────────────────────────────────────────────────────
+
+Grammar:
+    unary → ( "!" | "-" ) unary | primary
+
+Code:
+    Expr* parseUnary() {
+        if (match(BANG) || match(MINUS)) {
+            Token op = advance();
+            Expr* right = parseUnary();  // RECURSIVE! (right-assoc)
+            return new UnaryExpr(op, right);
+        }
+        
+        return parsePrimary();  // No unary operator, parse primary
+    }
+
+WHAT IT DOES:
+- If we see ! or -: parse another unary (recursively!)
+- Otherwise: parse a primary
+
+EXAMPLE: --5
+
+    parseUnary():
+    1. match(MINUS)? YES
+    2. op = MINUS
+    3. right = parseUnary()  ← RECURSIVE!
+       └─> parseUnary():
+           1. match(MINUS)? YES
+           2. op = MINUS
+           3. right = parseUnary()  ← RECURSIVE AGAIN!
+              └─> parseUnary() → parsePrimary() → Literal(5)
+           4. return UnaryExpr(-, Literal(5))
+    4. return UnaryExpr(-, UnaryExpr(-, Literal(5)))
+
+PATTERN: RIGHT-ASSOCIATIVE (builds tree to right via recursion)
+
+────────────────────────────────────────────────────────────────────────────
+
+FUNCTION: parsePrimary()
+────────────────────────────────────────────────────────────────────────────
+
+Grammar:
+    primary → NUMBER | IDENTIFIER | "(" expression ")"
+
+Code:
+    Expr* parsePrimary() {
+        // Number literal
+        if (match(NUMBER)) {
+            Token token = advance();
+            return new LiteralExpr(token.literal);
+        }
+        
+        // Identifier (variable)
+        if (match(IDENTIFIER)) {
+            Token token = advance();
+            return new VariableExpr(token.lexeme);
+        }
+        
+        // Grouped expression: (...)
+        if (match(LPAREN)) {
+            advance();  // Consume "("
+            Expr* expr = parseExpression();  // Parse inside (RESTART!)
+            consume(RPAREN, "Expected ')' after expression");
+            return new GroupingExpr(expr);
+        }
+        
+        // Error: unexpected token
+        throw std::runtime_error("Expected expression");
+    }
+
+WHAT IT DOES:
+- Handles the "atoms" (terminals)
+- Numbers, identifiers, and grouped expressions
+- For grouped: recursively calls parseExpression() (starts over!)
+
+EXAMPLE: (3 + 5)
+
+    parsePrimary():
+    1. match(LPAREN)? YES
+    2. advance()  → consume "("
+    3. expr = parseExpression()  ← RESTART FROM TOP!
+       └─> parseExpression() → parseAssignment() → ... → parseTerm()
+           └─> builds: BinaryExpr(+, Literal(3), Literal(5))
+    4. consume(RPAREN)
+    5. return GroupingExpr(BinaryExpr(+, 3, 5))
+
+================================================================================
+                    PART 4: CALL SEQUENCE
+================================================================================
+
+THE HIERARCHY:
+────────────────────────────────────────────────────────────────────────────
+
+parseExpression()      (entry point)
+    ↓
+parseAssignment()      (lowest precedence)
+    ↓
+parseEquality()
+    ↓
+parseComparison()
+    ↓
+parseTerm()            (+ -)
+    ↓
+parseFactor()          (* /)
+    ↓
+parseUnary()           (! -)
+    ↓
+parsePrimary()         (highest precedence)
+
+RULE: Each level calls the NEXT level (higher precedence)
+
+────────────────────────────────────────────────────────────────────────────
+
+EXAMPLE: Complete Call Trace for "3 + 4 * 5"
+────────────────────────────────────────────────────────────────────────────
+
+Tokens: [NUMBER(3), PLUS, NUMBER(4), STAR, NUMBER(5), EOF]
+
+1. parseExpression()
+   └─> parseAssignment()
+       └─> parseEquality()
+           └─> parseComparison()
+               └─> parseTerm()
+                   │
+                   ├─ Iteration 1:
+                   │  ├─ left = parseFactor()
+                   │  │  └─> parseFactor()
+                   │  │      ├─ left = parseUnary()
+                   │  │      │  └─> parseUnary()
+                   │  │      │      └─> parsePrimary()
+                   │  │      │          └─> NUMBER(3)
+                   │  │      │          return Literal(3)
+                   │  │      ├─ match(STAR)? NO
+                   │  │      └─ return Literal(3)
+                   │  │
+                   │  ├─ match(PLUS)? YES
+                   │  ├─ op = PLUS
+                   │  │
+                   │  ├─ right = parseFactor()
+                   │  │  └─> parseFactor()
+                   │  │      ├─ left = parseUnary()
+                   │  │      │  └─> ... → Literal(4)
+                   │  │      ├─ match(STAR)? YES
+                   │  │      ├─ op = STAR
+                   │  │      ├─ right = parseUnary()
+                   │  │      │  └─> ... → Literal(5)
+                   │  │      └─ return BinaryExpr(*, 4, 5)
+                   │  │
+                   │  └─ left = BinaryExpr(+, Literal(3), BinaryExpr(*, 4, 5))
+                   │
+                   └─ return BinaryExpr(+, Literal(3), BinaryExpr(*, 4, 5))
+
+FINAL TREE:
+
+        Binary(+)
+        /       \
+    Literal(3) Binary(*)
+               /       \
+           Literal(4) Literal(5)
+
+================================================================================
+                    PART 5: KEY PATTERNS
+================================================================================
+
+PATTERN 1: LEFT-ASSOCIATIVE (while loop)
+────────────────────────────────────────────────────────────────────────────
+
+Expr* parseX() {
+    Expr* left = parseHigherPrecedence();
+    
+    while (match(OPERATOR)) {
+        Token op = advance();
+        Expr* right = parseHigherPrecedence();
+        left = new BinaryExpr(left, op, right);  // ← Wrap and update left
+    }
+    
+    return left;
+}
+
+Used for: + - * / == != < > etc.
+
+Builds tree to LEFT: (((a + b) + c) + d)
+
+────────────────────────────────────────────────────────────────────────────
+
+PATTERN 2: RIGHT-ASSOCIATIVE (recursion)
+────────────────────────────────────────────────────────────────────────────
+
+Expr* parseX() {
+    if (match(OPERATOR)) {
+        Token op = advance();
+        Expr* right = parseX();  // ← RECURSIVE CALL!
+        return new SomeExpr(op, right);
+    }
+    
+    return parseHigherPrecedence();
+}
+
+Used for: assignment, unary operators
+
+Builds tree to RIGHT: (a = (b = (c = d)))
+
+────────────────────────────────────────────────────────────────────────────
+
+PATTERN 3: ALTERNATIVES (if statements)
+────────────────────────────────────────────────────────────────────────────
+
+Expr* parsePrimary() {
+    if (match(NUMBER)) {
+        return parseNumber();
+    }
+    if (match(STRING)) {
+        return parseString();
+    }
+    if (match(IDENTIFIER)) {
+        return parseIdentifier();
+    }
+    // etc.
+}
+
+Used for: multiple possible paths in grammar
+
+================================================================================
+                    PART 6: WHY THIS WORKS
+================================================================================
+
+THE MAGIC:
+────────────────────────────────────────────────────────────────────────────
+
+1. Each function handles ONE precedence level
+2. Each function calls HIGHER precedence first
+3. Lower precedence ends up at ROOT (evaluated last)
+4. Higher precedence ends up DEEPER (evaluated first)
+
+EXAMPLE: 3 + 4 * 5
+
+parseTerm (handles +):
+- Calls parseFactor (handles *)
+- parseFactor builds: 4 * 5
+- parseTerm wraps it: 3 + (4 * 5)
+- Result: + is at root, * is deeper
+
+AUTOMATIC PRECEDENCE! 🎉
+
+────────────────────────────────────────────────────────────────────────────
+
+WHY RECURSION FOR HIGHER PRECEDENCE?
+────────────────────────────────────────────────────────────────────────────
+
+When parseTerm() calls parseFactor():
+
+parseTerm: "I handle +, but first let me get my operands..."
+           ↓
+parseFactor: "I handle *, let me get MY operands first..."
+             ↓
+parseUnary: "I handle unary, let me get MY operands..."
+            ↓
+parsePrimary: "I'm a leaf! Here's a number!"
+
+The recursion UNWINDS:
+parsePrimary → parseUnary → parseFactor → parseTerm
+
+Lower precedence wraps higher precedence!
+
+================================================================================
+                    PART 7: DEBUGGING TIPS
+================================================================================
+
+TECHNIQUE 1: Add Print Statements
+────────────────────────────────────────────────────────────────────────────
+
+Expr* parseTerm() {
+    std::cout << "Entering parseTerm, current token: " 
+              << peek().lexeme << std::endl;
+    
+    Expr* left = parseFactor();
+    // ...
+    
+    std::cout << "Exiting parseTerm" << std::endl;
+    return left;
+}
+
+Shows you the call hierarchy!
+
+────────────────────────────────────────────────────────────────────────────
+
+TECHNIQUE 2: Print Token Position
+────────────────────────────────────────────────────────────────────────────
+
+void debugState() {
+    std::cout << "Position: " << current 
+              << ", Token: " << peek().lexeme << std::endl;
+}
+
+Shows where you are in token stream!
+
+────────────────────────────────────────────────────────────────────────────
+
+TECHNIQUE 3: Visualize Call Stack
+────────────────────────────────────────────────────────────────────────────
+
+Add indent parameter:
+
+Expr* parseTerm(int indent = 0) {
+    std::cout << std::string(indent, ' ') << "parseTerm" << std::endl;
+    Expr* left = parseFactor(indent + 2);
+    // ...
+}
+
+Output shows nesting:
+parseTerm
+  parseFactor
+    parseUnary
+      parsePrimary
+
+================================================================================
+                    END OF GUIDE
+================================================================================

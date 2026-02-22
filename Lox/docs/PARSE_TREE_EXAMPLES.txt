@@ -1,0 +1,527 @@
+================================================================================
+                    PARSE TREE EXAMPLES - BREAKFAST GRAMMAR
+================================================================================
+
+GRAMMAR RULES:
+────────────────────────────────────────────────────────────────────────────
+
+breakfast → protein ( "with" breakfast "on the side" )?
+          | bread ;
+
+protein → ( "scrambled" | "poached" | "fried" ) "eggs" ;
+
+bread → "toast" | "biscuits" | "English muffin" ;
+
+================================================================================
+                          EXAMPLE 1: Simple Protein
+================================================================================
+
+INPUT: "scrambled eggs"
+
+PARSING TRACE:
+────────────────────────────────────────────────────────────────────────────
+
+1. Start: breakfast
+2. Check first alternative: protein (...)
+3. Parse protein:
+   - Match "scrambled" (cooking method) ✓
+   - Match "eggs" ✓
+4. Check optional part ( "with" breakfast "on the side" )?
+   - No "with" found
+   - Skip optional part
+5. Done!
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+         breakfast
+            |
+         protein
+         /     \
+   "scrambled"  "eggs"
+
+
+TREE STRUCTURE (Detailed):
+────────────────────────────────────────────────────────────────────────────
+
+breakfast
+└── protein
+    ├── cooking_method: "scrambled"
+    └── "eggs"
+
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+
+Result: A plate of scrambled eggs (no side dish)
+
+================================================================================
+                      EXAMPLE 2: Protein with Bread Side
+================================================================================
+
+INPUT: "poached eggs with toast on the side"
+
+TOKENS: ["poached", "eggs", "with", "toast", "on", "the", "side"]
+
+PARSING TRACE:
+────────────────────────────────────────────────────────────────────────────
+
+1. Start: breakfast
+2. Parse protein:
+   - Match "poached" ✓
+   - Match "eggs" ✓
+3. Check optional part:
+   - Match "with" ✓ (optional part is present!)
+4. Parse breakfast recursively:
+   - Try protein: "toast" doesn't match cooking methods ✗
+   - Try bread: Match "toast" ✓
+5. Match "on the side" ✓
+6. Done!
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+                breakfast
+               /         \
+          protein      optional_side
+         /      \      /      |      \
+   "poached" "eggs" "with" breakfast "on the side"
+                            |
+                          bread
+                            |
+                         "toast"
+
+
+TREE STRUCTURE (Annotated):
+────────────────────────────────────────────────────────────────────────────
+
+breakfast ................................. main dish
+├── protein ............................... main protein
+│   ├── cooking_method: "poached"
+│   └── "eggs"
+└── optional_side ......................... side dish clause
+    ├── "with"
+    ├── breakfast ......................... recursive call!
+    │   └── bread
+    │       └── "toast"
+    └── "on the side"
+
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+
+Result: A plate of poached eggs with toast served on the side
+
+================================================================================
+                      EXAMPLE 3: Just Bread
+================================================================================
+
+INPUT: "English muffin"
+
+PARSING TRACE:
+────────────────────────────────────────────────────────────────────────────
+
+1. Start: breakfast
+2. Try first alternative: protein
+   - Check for cooking methods: "scrambled", "poached", "fried"
+   - "English" doesn't match any ✗
+   - First alternative fails
+3. Try second alternative: bread
+   - Match "English muffin" ✓
+4. Done!
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+    breakfast
+       |
+      bread
+       |
+  "English muffin"
+
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+
+Result: Just an English muffin (no protein)
+
+================================================================================
+                  EXAMPLE 4: Protein with Protein Side
+================================================================================
+
+INPUT: "fried eggs with scrambled eggs on the side"
+
+PARSING TRACE:
+────────────────────────────────────────────────────────────────────────────
+
+1. Start: breakfast
+2. Parse protein: "fried eggs" ✓
+3. Match "with" ✓
+4. Parse breakfast recursively:
+   - Parse protein: "scrambled eggs" ✓
+   - Check for "with": not found
+   - Skip optional part
+5. Match "on the side" ✓
+6. Done!
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+                breakfast
+               /         \
+          protein      optional_side
+         /      \      /      |      \
+    "fried"  "eggs" "with" breakfast "on the side"
+                            |
+                         protein
+                        /      \
+                 "scrambled" "eggs"
+
+
+TREE STRUCTURE (Detailed):
+────────────────────────────────────────────────────────────────────────────
+
+breakfast (level 1)
+├── protein
+│   ├── "fried"
+│   └── "eggs"
+└── optional_side
+    ├── "with"
+    ├── breakfast (level 2) .................. recursion!
+    │   └── protein
+    │       ├── "scrambled"
+    │       └── "eggs"
+    └── "on the side"
+
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+
+Result: Fried eggs with scrambled eggs on the side
+(Yes, you can have eggs with eggs!)
+
+================================================================================
+                  EXAMPLE 5: Double Nested (2 Sides)
+================================================================================
+
+INPUT: "poached eggs with fried eggs with biscuits on the side on the side"
+
+TOKENS: ["poached", "eggs", "with", "fried", "eggs", "with", 
+         "biscuits", "on", "the", "side", "on", "the", "side"]
+
+PARSING TRACE:
+────────────────────────────────────────────────────────────────────────────
+
+1. Start: breakfast (level 1)
+2. Parse protein: "poached eggs" ✓
+3. Match "with" ✓
+4. Parse breakfast recursively (level 2):
+   a. Parse protein: "fried eggs" ✓
+   b. Match "with" ✓
+   c. Parse breakfast recursively (level 3):
+      - Try protein: "biscuits" doesn't match ✗
+      - Try bread: "biscuits" ✓
+   d. Match "on the side" ✓ (closes level 3)
+5. Match "on the side" ✓ (closes level 2)
+6. Done!
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+                        breakfast₁
+                       /          \
+                  protein₁      optional_side₁
+                 /       \      /      |          \
+           "poached" "eggs"  "with" breakfast₂  "on the side"
+                                    /          \
+                              protein₂      optional_side₂
+                             /       \      /      |          \
+                       "fried" "eggs" "with" breakfast₃  "on the side"
+                                              |
+                                            bread
+                                              |
+                                         "biscuits"
+
+
+TREE STRUCTURE (With Levels Marked):
+────────────────────────────────────────────────────────────────────────────
+
+breakfast (LEVEL 1)
+├── protein: "poached eggs"
+└── optional_side
+    ├── "with"
+    ├── breakfast (LEVEL 2) .................. first recursion
+    │   ├── protein: "fried eggs"
+    │   └── optional_side
+    │       ├── "with"
+    │       ├── breakfast (LEVEL 3) .......... second recursion
+    │       │   └── bread: "biscuits"
+    │       └── "on the side" ................ closes LEVEL 3
+    └── "on the side" ........................ closes LEVEL 2
+
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+
+Result: Poached eggs with (fried eggs with biscuits on the side) on the side
+
+Reading it naturally:
+- Main dish: poached eggs
+- With a side of: fried eggs
+- And that side has its own side: biscuits
+
+It's sides all the way down!
+
+================================================================================
+                  EXAMPLE 6: Triple Nested (Maximum Recursion!)
+================================================================================
+
+INPUT: "scrambled eggs with poached eggs with fried eggs with toast 
+        on the side on the side on the side"
+
+PARSING TRACE:
+────────────────────────────────────────────────────────────────────────────
+
+Level 1: breakfast → protein: "scrambled eggs"
+         Check "with" ✓
+         
+Level 2:   breakfast → protein: "poached eggs"
+           Check "with" ✓
+           
+Level 3:     breakfast → protein: "fried eggs"
+             Check "with" ✓
+             
+Level 4:       breakfast → bread: "toast"
+               Check "with" ✗
+               No more recursion
+               Match "on the side" ✓ (closes Level 4)
+             
+           Match "on the side" ✓ (closes Level 3)
+         
+       Match "on the side" ✓ (closes Level 2)
+
+PARSE TREE (Compact):
+────────────────────────────────────────────────────────────────────────────
+
+breakfast₁
+├── "scrambled eggs"
+└── with
+    ├── breakfast₂
+    │   ├── "poached eggs"
+    │   └── with
+    │       ├── breakfast₃
+    │       │   ├── "fried eggs"
+    │       │   └── with
+    │       │       ├── breakfast₄
+    │       │       │   └── "toast"
+    │       │       └── "on the side" ←─┐
+    │       └── "on the side" ←─────────┤ Three "on the side"s
+    └── "on the side" ←─────────────────┘ close three levels!
+
+
+FULL PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+breakfast (LEVEL 1) ......................... main dish
+├── protein: "scrambled eggs"
+└── optional_side
+    ├── "with"
+    ├── breakfast (LEVEL 2) ................. first side
+    │   ├── protein: "poached eggs"
+    │   └── optional_side
+    │       ├── "with"
+    │       ├── breakfast (LEVEL 3) ......... second side
+    │       │   ├── protein: "fried eggs"
+    │       │   └── optional_side
+    │       │       ├── "with"
+    │       │       ├── breakfast (LEVEL 4)  third side
+    │       │       │   └── bread: "toast"
+    │       │       └── "on the side" ....... closes LEVEL 4
+    │       └── "on the side" ............... closes LEVEL 3
+    └── "on the side" ....................... closes LEVEL 2
+
+
+EVALUATION:
+────────────────────────────────────────────────────────────────────────────
+
+Result: A ridiculous breakfast order!
+
+Main: scrambled eggs
+  with: poached eggs
+    with: fried eggs
+      with: toast
+
+Like Russian nesting dolls of breakfast items!
+
+================================================================================
+                  EXAMPLE 7: Invalid Input (Parse Error)
+================================================================================
+
+INPUT: "eggs"
+
+PARSING TRACE:
+────────────────────────────────────────────────────────────────────────────
+
+1. Start: breakfast
+2. Try first alternative: protein
+   - Need cooking method first
+   - "eggs" is not a cooking method ✗
+3. Try second alternative: bread
+   - "eggs" is not "toast", "biscuits", or "English muffin" ✗
+4. Both alternatives failed!
+5. PARSE ERROR!
+
+ERROR MESSAGE:
+────────────────────────────────────────────────────────────────────────────
+
+Parse error at line 1: Expected protein or bread
+Got: "eggs"
+
+Did you mean:
+  - scrambled eggs
+  - poached eggs
+  - fried eggs
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+None (parsing failed)
+
+================================================================================
+                  EXAMPLE 8: Missing "on the side"
+================================================================================
+
+INPUT: "scrambled eggs with toast"
+
+PARSING TRACE:
+────────────────────────────────────────────────────────────────────────────
+
+1. Start: breakfast
+2. Parse protein: "scrambled eggs" ✓
+3. Match "with" ✓
+4. Parse breakfast recursively:
+   - Parse bread: "toast" ✓
+5. Expect "on the side" ... NOT FOUND ✗
+6. PARSE ERROR!
+
+ERROR MESSAGE:
+────────────────────────────────────────────────────────────────────────────
+
+Parse error at end of input: Expected "on the side" after breakfast item
+Got: END OF INPUT
+
+PARSE TREE:
+────────────────────────────────────────────────────────────────────────────
+
+breakfast (incomplete)
+├── protein: "scrambled eggs"
+└── optional_side
+    ├── "with"
+    ├── breakfast: "toast"
+    └── ??? ERROR: missing "on the side"
+
+================================================================================
+                  COMPARISON: Different Inputs
+================================================================================
+
+INPUT                                           | DEPTH | ITEMS
+────────────────────────────────────────────────|───────|──────
+"toast"                                         | 1     | 1
+"scrambled eggs"                                | 1     | 1
+"fried eggs with toast on the side"             | 2     | 2
+"poached eggs with scrambled eggs on the side"  | 2     | 2
+"eggs with eggs with toast on the side ..."     | 3     | 3
+"eggs with eggs with eggs with toast ..."       | 4     | 4
+
+DEPTH = Number of recursive breakfast calls
+ITEMS = Total number of food items mentioned
+
+================================================================================
+                  HOW RECURSION WORKS
+================================================================================
+
+The magic is in this part of the grammar:
+
+    breakfast → protein ( "with" breakfast "on the side" )?
+
+Notice: breakfast appears on BOTH sides!
+    - Left side: What we're defining
+    - Right side: Recursive reference
+
+This allows INFINITE nesting (limited only by stack size in practice)
+
+RECURSIVE CALL STACK:
+────────────────────────────────────────────────────────────────────────────
+
+For input: "eggs with eggs with toast on the side on the side"
+
+parseBreakfast() {           // Call 1 (main)
+    parseProtein()           → "eggs"
+    match("with")            → ✓
+    parseBreakfast() {       // Call 2 (recursive)
+        parseProtein()       → "eggs"
+        match("with")        → ✓
+        parseBreakfast() {   // Call 3 (recursive)
+            parseBread()     → "toast"
+            match("with")    → ✗ (no more nesting)
+        }
+        match("on the side") → ✓ (return from Call 3)
+    }
+    match("on the side")     → ✓ (return from Call 2)
+}                            → (return from Call 1)
+
+Each "on the side" closes one level of recursion!
+
+================================================================================
+                  KEY CONCEPTS ILLUSTRATED
+================================================================================
+
+1. ALTERNATION (|)
+   breakfast can be protein OR bread
+   Choose one path through the grammar
+
+2. OPTIONAL (?)
+   The "with ... on the side" part may or may not appear
+   Parser tries to match, continues if not found
+
+3. RECURSION
+   breakfast refers to itself
+   Allows unlimited nesting depth
+
+4. SEQUENCE (space)
+   Items must appear in order: "with" breakfast "on the side"
+   All three parts required if optional clause is used
+
+5. GROUPING ( )
+   Everything in parentheses is treated as a unit
+   The whole optional clause stands or falls together
+
+================================================================================
+                  PARSE TREE NOTATION EXPLAINED
+================================================================================
+
+SYMBOLS USED IN TREES:
+
+├── or └──   Branch of tree (child node)
+│            Vertical line (continuation)
+|            Separator or single child
+/  \         Binary branching
+"text"       Terminal symbol (actual text)
+name         Non-terminal (grammar rule name)
+name₁, name₂ Numbered instances (for recursion)
+
+INDENTATION:
+    Same level = siblings
+    Deeper indent = children
+
+EXAMPLE:
+    breakfast
+    ├── protein       ← First child
+    │   ├── "fried"   ← Grandchild of breakfast
+    │   └── "eggs"    ← Grandchild of breakfast
+    └── side          ← Second child
+        └── "toast"   ← Grandchild of breakfast
+
+================================================================================
+                          END OF EXAMPLES
+================================================================================

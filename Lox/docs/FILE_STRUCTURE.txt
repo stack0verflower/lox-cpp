@@ -1,0 +1,44 @@
+Lox/
+├── include/
+│   ├── core/
+│   │   ├── Lox.h
+│   │   └── Token.h
+│   │
+│   ├── scanner/
+│   │   ├── Lexer.h
+│   │   └── TokenType.h
+│   │
+│   ├── parser/          (future)
+│   │   ├── Parser.h
+│   │   ├── Expr.h
+│   │   └── Stmt.h
+│   │
+│   └── interpreter/     (future)
+│       └── Interpreter.h
+│
+├── src/
+│   ├── core/
+│   │   └── Lox.cpp
+│   │
+│   ├── scanner/
+│   │   └── Lexer.cpp
+│   │
+│   ├── parser/          (future)
+│   │   └── Parser.cpp
+│   │
+│   ├── interpreter/     (future)
+│   │   └── Interpreter.cpp
+│   │
+│   └── main.cpp
+│
+├── tests/
+│   ├── scanner/
+│   │   ├── test_numbers.lox
+│   │   └── test_strings.lox
+│   ├── parser/          (future)
+│   └── interpreter/     (future)
+│
+├── docs/
+│   └── (your reference files)
+│
+└── CMakeLists.txt       (or Makefile)

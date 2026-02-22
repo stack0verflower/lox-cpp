@@ -1,8 +1,8 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include "Token.h"
-#include "Lox.h"
+#include "core/Token.h"
+#include "core/Lox.h"
 #include <vector>
 #include <string>
 
@@ -28,7 +28,7 @@ public:
 	char advance();
 private:
 	void addToken(TokenType type);
-	void addToken(TokenType type, Literal literal);
+	void addToken(TokenType type, LiteralVal literal);
 	bool match(char expected);
 
 	/*

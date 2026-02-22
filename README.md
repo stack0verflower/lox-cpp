@@ -9,99 +9,102 @@ This project is my journey through *Crafting Interpreters*, translating the Java
 ## 🚧 Current Status
 
 **Completed:**
-- ✅ **Chapter 4: Scanning** - Lexical analysis and tokenization
+- ✅ **Chapter 4: Scanning** — Lexical analysis and tokenization
+- ✅ **Chapter 5: Representing Code** — AST node definitions
+- ✅ **Chapter 6: Parsing Expressions** — Recursive descent parser with full expression support
 
 **Coming Next:**
-- ⏳ Chapter 5: Representing Code (AST)
-- ⏳ Chapter 6: Parsing Expressions
 - ⏳ Chapter 7: Evaluating Expressions
+- ⏳ Chapter 8: Statements and State
 - ⏳ And more...
+
+## 📁 Project Structure
+
+```
+Lox/
+├── include/
+│   ├── core/
+│   │   ├── Lox.h
+│   │   └── Token.h
+│   ├── scanner/
+│   │   ├── Lexer.h
+│   │   └── TokenType.h
+│   ├── parser/          (future)
+│   │   ├── Parser.h
+│   │   ├── Expr.h
+│   │   └── Stmt.h
+│   └── interpreter/     (future)
+│       └── Interpreter.h
+├── src/
+│   ├── core/
+│   │   └── Lox.cpp
+│   ├── scanner/
+│   │   └── Lexer.cpp
+│   ├── parser/          (future)
+│   │   └── Parser.cpp
+│   ├── interpreter/     (future)
+│   │   └── Interpreter.cpp
+│   └── main.cpp
+├── tests/
+│   ├── scanner/
+│   │   ├── test_numbers.lox
+│   │   └── test_strings.lox
+│   ├── parser/          (future)
+│   └── interpreter/     (future)
+├── docs/
+│   └── (reference files)
+└── CMakeLists.txt       (or Makefile)
+```
 
 ## 🎯 Features Implemented
 
-### Lexer/Scanner
+### Lexer/Scanner (Chapter 4)
 - Tokenizes Lox source code into tokens
-- Recognizes all Lox token types:
-  - Single-character tokens: `(`, `)`, `{`, `}`, `,`, `.`, `-`, `+`, `;`, `*`
-  - One or two character tokens: `!`, `!=`, `=`, `==`, `>`, `>=`, `<`, `<=`
-  - Literals: numbers (integers and floats), strings, identifiers
-  - Keywords: `and`, `class`, `else`, `false`, `for`, `fun`, `if`, `nil`, `or`, `print`, `return`, `super`, `this`, `true`, `var`, `while`
+- Recognizes all Lox token types — single/double character tokens, literals, keywords
 - Line number tracking for error reporting
 - String and number literal parsing
 - Comment support (`//`)
 
+### Parser (Chapter 5 & 6)
+- Recursive descent parser for all Lox expressions
+- Builds a proper **Abstract Syntax Tree (AST)**
+- Handles operator precedence and associativity correctly
+- Supports:
+  - Arithmetic: `+`, `-`, `*`, `/`
+  - Comparison: `<`, `<=`, `>`, `>=`, `==`, `!=`
+  - Unary: `-`, `!`
+  - Grouping: `(` ... `)`
+  - Literals: numbers, strings, `true`, `false`, `nil`
+
+### AstPrinter (Chapter 5)
+- Implements the **Visitor pattern** on the AST
+- Traverses the expression tree and pretty-prints it as a **Lisp-style S-expression**
+- Used for debugging and verifying parser correctness
+- Example: `1 + 2 * 3` → `(+ 1.000000 (* 2.000000 3.000000))`
+
+## 🖥️ Parser Output (AST)
+
+The parser prints expressions as a Lisp-style S-expression tree.
+
+![AST Output](Lox/docs/ast_output.png)
+
 ## 🔧 Building
 
 ### Prerequisites
-- Visual Studio 2019 or later (or any C++20 compatible compiler)
-- C++20 standard library support (for `std::variant`)
+- C++20 compatible compiler (GCC, Clang, or MSVC)
+- CMake (recommended) or Visual Studio
 
-### Compilation
-Currently a Visual Studio project. Open `Lox.sln` and build.
 
-**Note:** The project currently runs a hardcoded test in `main()`. CLI argument handling will be added in future chapters.
-
-## 🚀 Usage
-
-Currently, the lexer is tested with hardcoded source code. Full CLI and REPL functionality coming in later chapters.
-
-### Example Test Code
-```lox
-var x = 42;
-var y = 3.14;
-var name = "Lox";
-
-if (x >= 10) {
-    print name + " value:";
-    print x + y;
-}
-```
-
-### Current Output (Tokens)
-```
-Token(36, var, 4)
-Token(19, x, 4)
-Token(13, =, 4)
-Token(21, 42, 4)
-Token(8, ;, 4)
-Token(36, var, 5)
-Token(19, y, 5)
-Token(13, =, 5)
-Token(21, 3.14, 5)
-Token(8, ;, 5)
-Token(36, var, 6)
-Token(19, name, 6)
-Token(13, =, 6)
-Token(20, "Lox", 6)
-Token(8, ;, 6)
-Token(28, if, 8)
-Token(0, (, 8)
-Token(19, x, 8)
-Token(16, >=, 8)
-Token(21, 10, 8)
-Token(1, ), 8)
-Token(2, {, 8)
-Token(31, print, 9)
-Token(19, name, 9)
-Token(7, +, 9)
-Token(20, " value:", 9)
-Token(8, ;, 9)
-Token(31, print, 10)
-Token(19, x, 10)
-Token(7, +, 10)
-Token(19, y, 10)
-Token(8, ;, 10)
-Token(3, }, 11)
-Token(38, EOF, 13)
-```
+### Compilation (Visual Studio)
+Open the `.sln` or `.vcxproj` file and build directly.
 
 ## 📖 Learning Notes
 
 ### Java → C++ Translation Challenges
 - `std::variant` for the `Literal` type (requires C++17+)
-- Manual memory management considerations
-- Different standard library utilities
-- Proper use of `std::string` vs `const char*`
+- Manual memory management vs Java's garbage collection
+- Visitor pattern implementation differs significantly
+- Proper use of `std::string`, smart pointers, and Proper use of std::string and `std::unique_ptr` for AST nodes — since each node has exactly one parent/owner, unique_ptr is the right fit over shared_ptr
 
 ## 🙏 Acknowledgments
 

@@ -103,6 +103,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -118,6 +119,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -125,14 +127,30 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Lexer.cpp" />
-    <ClCompile Include="Lexer.h" />
-    <ClCompile Include="Lox.cpp" />
-    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="src/scanner/Lexer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Lox.h" />
-    <ClInclude Include="Token.h" />
+    <ClCompile Include="src/core/Lox.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src/Main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include/core/Lox.h" />
+    <ClInclude Include="include/core/Token.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include/scanner/Lexer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include/parser/Expr.h" />
+    <ClInclude Include="include/parser/Parser.h" />
+    <ClInclude Include="include/parser/ASTPrinter.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src/parser/Parser.cpp" />
+    <ClCompile Include="src/parser/Expr.cpp" />
+    <ClCompile Include="src/parser/ASTPrinter.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

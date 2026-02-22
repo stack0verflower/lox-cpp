@@ -1,4 +1,4 @@
-#include "Lox.h"
+#include "core/Lox.h"
 
 void Lox::main(int argc, char* argv[]) {
     if (argc > 2) {
