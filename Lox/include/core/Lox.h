@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include "interpreter/Interpreter.h"
 
 class Lox {
 public:

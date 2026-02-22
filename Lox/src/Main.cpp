@@ -4,6 +4,7 @@
 #include "scanner/Lexer.h"
 #include "parser/Parser.h"
 #include "parser/ASTPrinter.h"
+#include "interpreter/Interpreter.h"
 
 int main() {
     std::vector<std::string> tests = {
@@ -27,10 +28,8 @@ int main() {
         std::unique_ptr<Expr> expression = parser.parse();
 
         if (expression) {
-            ASTPrinter printer;
-            std::cout << "AST:    "
-                << printer.print(*expression)
-                << std::endl;
+			Interpreter interpreter;
+			interpreter.interpret(*expression);
         }
         else {
             std::cout << "Parse failed." << std::endl;

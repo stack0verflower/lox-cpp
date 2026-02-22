@@ -177,7 +177,7 @@ void Lexer::addToken(TokenType type) {
 	addToken(type, nullptr);
 }
 
-void Lexer::addToken(TokenType type, LiteralVal literal) {
+void Lexer::addToken(TokenType type, LiteralValue literal) {
 	std::string text = source.substr(start, current - start);
 	tokens.emplace_back(type, text, literal, line);
 }

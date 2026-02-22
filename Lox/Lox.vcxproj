@@ -138,6 +138,7 @@
   <ItemGroup>
     <ClInclude Include="include/core/Lox.h" />
     <ClInclude Include="include/core/Token.h" />
+    <ClInclude Include="include/core/Common.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include/scanner/Lexer.h" />
@@ -148,9 +149,15 @@
     <ClInclude Include="include/parser/ASTPrinter.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include/interpreter/Interpreter.h" />
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="src/parser/Parser.cpp" />
     <ClCompile Include="src/parser/Expr.cpp" />
     <ClCompile Include="src/parser/ASTPrinter.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src/interpreter/Interpreter.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

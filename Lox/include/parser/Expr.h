@@ -2,10 +2,8 @@
 #define EXPR_H
 
 #include <memory>
-#include <core/Token.h>
-#include <variant>
-
-using LiteralValue = std::variant<std::string, double, bool, std::nullptr_t>;
+#include "core/Token.h"
+#include "core/Common.h"
 
 class ExprVisitor;
 class Expr;
@@ -19,10 +17,10 @@ public:
 	virtual ~ExprVisitor() = default;
 
 	// One visit method for EACH expression type
-	virtual std::string visitBinaryExpr(const Binary& expr) = 0;
-	virtual std::string visitGroupingExpr(const Grouping& expr) = 0;
-	virtual std::string visitLiteralExpr(const Literal& expr) = 0;
-	virtual std::string visitUnaryExpr(const Unary& expr) = 0;
+	virtual LiteralValue visitBinaryExpr(const Binary& expr) = 0;
+	virtual LiteralValue visitGroupingExpr(const Grouping& expr) = 0;
+	virtual LiteralValue visitLiteralExpr(const Literal& expr) = 0;
+	virtual LiteralValue visitUnaryExpr(const Unary& expr) = 0;
 };
 
 class Expr {
@@ -36,7 +34,7 @@ public:
 	*/
 	virtual ~Expr() = default;
 
-	virtual std::string accept(ExprVisitor* visitor) const = 0;
+	virtual LiteralValue accept(ExprVisitor* visitor) const = 0;
 };
 
 /*
@@ -58,7 +56,7 @@ public:
 
 	Binary(std::unique_ptr<Expr> left, const Token& op, std::unique_ptr<Expr> right);
 
-	std::string accept(ExprVisitor* visitor) const override;
+	LiteralValue accept(ExprVisitor* visitor) const override;
 };
 
 class Grouping : public Expr {
@@ -66,7 +64,7 @@ public:
 	std::unique_ptr<Expr> expression;
 	Grouping(std::unique_ptr<Expr> expression);
 
-	std::string accept(ExprVisitor* visitor) const override;
+	LiteralValue accept(ExprVisitor* visitor) const override;
 };
 
 class Literal : public Expr {
@@ -74,7 +72,7 @@ public:
 	LiteralValue value;
 	Literal(const LiteralValue& value);
 
-	std::string accept(ExprVisitor* visitor) const override;
+	LiteralValue accept(ExprVisitor* visitor) const override;
 };
 
 class Unary : public Expr {
@@ -83,7 +81,7 @@ public:
 	std::unique_ptr<Expr> right;
 	Unary(const Token& op, std::unique_ptr<Expr> right);
 
-	std::string accept(ExprVisitor* visitor) const override;
+	LiteralValue accept(ExprVisitor* visitor) const override;
 };
 
 #endif

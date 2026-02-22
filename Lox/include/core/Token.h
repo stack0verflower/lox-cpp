@@ -1,11 +1,7 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
-#include <string>
-#include <variant>
-
-// Define the only types a literal can actually be, it actually means a custom data type, which can hold a value of any one of these values
-using LiteralVal = std::variant<std::string, double, bool, std::nullptr_t>;
+#include "core/Common.h"
 
 enum class TokenType {
 	// Single-character tokens.
@@ -31,10 +27,10 @@ enum class TokenType {
 struct Token {
 	TokenType type;
 	std::string lexeme;	// Stores literal value, like "123", "hello", "true", etc. It is the actual text of the token as it appears in the source code.
-	LiteralVal literal;	// This stores the actual lexemme value intended to be used in the program, like 123, "hello", true, etc. It is the value of the token after it has been processed and converted to its appropriate type.
+	LiteralValue literal;	// This stores the actual lexemme value intended to be used in the program, like 123, "hello", true, etc. It is the value of the token after it has been processed and converted to its appropriate type.
 	int line;
 
-	Token(TokenType token, std::string lexeme, LiteralVal literal, int line)
+	Token(TokenType token, std::string lexeme, LiteralValue literal, int line)
 		: type(token), lexeme(lexeme), literal(literal), line(line) {}
 
 public:

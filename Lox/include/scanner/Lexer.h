@@ -4,7 +4,6 @@
 #include "core/Token.h"
 #include "core/Lox.h"
 #include <vector>
-#include <string>
 
 class Lexer {
 private:
@@ -28,7 +27,7 @@ public:
 	char advance();
 private:
 	void addToken(TokenType type);
-	void addToken(TokenType type, LiteralVal literal);
+	void addToken(TokenType type, LiteralValue literal);
 	bool match(char expected);
 
 	/*
