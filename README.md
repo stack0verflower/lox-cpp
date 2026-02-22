@@ -12,10 +12,11 @@ This project is my journey through *Crafting Interpreters*, translating the Java
 - ✅ **Chapter 4: Scanning** — Lexical analysis and tokenization
 - ✅ **Chapter 5: Representing Code** — AST node definitions
 - ✅ **Chapter 6: Parsing Expressions** — Recursive descent parser with full expression support
+- ✅ **Chapter 7: Evaluating Expressions** — Tree-walk interpreter with runtime error handling
 
 **Coming Next:**
-- ⏳ Chapter 7: Evaluating Expressions
 - ⏳ Chapter 8: Statements and State
+- ⏳ Chapter 9: Control Flow
 - ⏳ And more...
 
 ## 📁 Project Structure
@@ -24,36 +25,40 @@ This project is my journey through *Crafting Interpreters*, translating the Java
 Lox/
 ├── include/
 │   ├── core/
+│   │   ├── Common.h
 │   │   ├── Lox.h
 │   │   └── Token.h
 │   ├── scanner/
-│   │   ├── Lexer.h
-│   │   └── TokenType.h
-│   ├── parser/          (future)
-│   │   ├── Parser.h
+│   │   └── Lexer.h
+│   ├── parser/
+│   │   ├── ASTPrinter.h
 │   │   ├── Expr.h
-│   │   └── Stmt.h
-│   └── interpreter/     (future)
+│   │   └── Parser.h
+│   └── interpreter/
 │       └── Interpreter.h
 ├── src/
 │   ├── core/
 │   │   └── Lox.cpp
 │   ├── scanner/
 │   │   └── Lexer.cpp
-│   ├── parser/          (future)
+│   ├── parser/
+│   │   ├── ASTPrinter.cpp
+│   │   ├── Expr.cpp
 │   │   └── Parser.cpp
-│   ├── interpreter/     (future)
+│   ├── interpreter/
 │   │   └── Interpreter.cpp
-│   └── main.cpp
-├── tests/
-│   ├── scanner/
-│   │   ├── test_numbers.lox
-│   │   └── test_strings.lox
-│   ├── parser/          (future)
-│   └── interpreter/     (future)
+│   └── Main.cpp
 ├── docs/
-│   └── (reference files)
-└── CMakeLists.txt       (or Makefile)
+│   ├── FILE_STRUCTURE.txt
+│   ├── GRAMMAR_NOTATION_REFERENCE.txt
+│   ├── PARSER_FUNCTIONS_EXPLAINED.txt
+│   ├── PARSE_TREE_EXAMPLES.txt
+│   ├── PARSE_TREE_PRACTICE_15_EXAMPLES.txt
+│   └── images/
+│       └──ast_output.png
+│       └──interpreter_output.png
+├── test.lox
+└── Lox.vcxproj
 ```
 
 ## 🎯 Features Implemented
@@ -76,17 +81,28 @@ Lox/
   - Grouping: `(` ... `)`
   - Literals: numbers, strings, `true`, `false`, `nil`
 
-### AstPrinter (Chapter 5)
+### Interpreter (Chapter 7)
+- Tree-walk interpreter that evaluates AST nodes directly
+- Implements the **Visitor pattern** on the expression hierarchy
+- Supports full expression evaluation: arithmetic, comparison, equality, unary
+- `stringify()` for clean result output — trims trailing zeros from doubles, handles `bool` and `nil`
+- Runtime error handling with line number reporting
+- `isTruthy()` following Lox semantics — only `false` and `nil` are falsy
+- Fix for `bool`-in-variant implicit conversion to `double` (C++ quirk with `std::variant`)
 - Implements the **Visitor pattern** on the AST
 - Traverses the expression tree and pretty-prints it as a **Lisp-style S-expression**
 - Used for debugging and verifying parser correctness
 - Example: `1 + 2 * 3` → `(+ 1.000000 (* 2.000000 3.000000))`
 
+## 🖥️ Interpreter Output (Chapter 7)
+
+![Interpreter Output](Lox/docs/images/interpreter_output.png)
+
 ## 🖥️ Parser Output (AST)
 
 The parser prints expressions as a Lisp-style S-expression tree.
 
-![AST Output](Lox/docs/ast_output.png)
+![AST Output](Lox/docs/images/ast_output.png)
 
 ## 🔧 Building
 
@@ -94,6 +110,12 @@ The parser prints expressions as a Lisp-style S-expression tree.
 - C++20 compatible compiler (GCC, Clang, or MSVC)
 - CMake (recommended) or Visual Studio
 
+### Compilation (CMake)
+```bash
+mkdir build && cd build
+cmake ..
+make
+```
 
 ### Compilation (Visual Studio)
 Open the `.sln` or `.vcxproj` file and build directly.
@@ -104,7 +126,8 @@ Open the `.sln` or `.vcxproj` file and build directly.
 - `std::variant` for the `Literal` type (requires C++17+)
 - Manual memory management vs Java's garbage collection
 - Visitor pattern implementation differs significantly
-- Proper use of `std::string`, smart pointers, and Proper use of std::string and `std::unique_ptr` for AST nodes — since each node has exactly one parent/owner, unique_ptr is the right fit over shared_ptr
+- Proper use of `std::string` and `std::unique_ptr` for AST nodes — since each node has exactly one parent/owner, `unique_ptr` is the right fit over `shared_ptr`
+- `std::variant` with both `bool` and `double` causes implicit conversion issues — C++ prefers converting `bool` to `double`, so comparison results must be explicitly wrapped as `LiteralValue(bool)` to force correct type storage
 
 ## 🙏 Acknowledgments
 
