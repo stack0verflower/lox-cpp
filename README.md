@@ -58,6 +58,7 @@ Lox/
 │   ├── PARSER_FUNCTIONS_EXPLAINED.txt
 │   ├── PARSE_TREE_EXAMPLES.txt
 │   ├── PARSE_TREE_PRACTICE_15_EXAMPLES.txt
+│   ├── ARCHITECTURE_NOTES.txt
 │   └── images/
 │       ├── repl_output.png
 ├── test.lox
