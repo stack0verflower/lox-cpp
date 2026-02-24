@@ -2,7 +2,6 @@
 #define PARSER_H
 
 #include "core/Token.h"
-#include "core/Lox.h"
 #include "parser/Expr.h"
 #include <vector>
 
@@ -53,14 +52,12 @@ private:
 	int current;
 
 private:
-	struct ParseError {};
 	Token consume(TokenType type, const std::string& message);
-	static ParseError error(Token token, const std::string& message);
+	// static ParseError error(Token token, const std::string& message);
 	void synchronize();
 
 public:
 	Parser(const std::vector<Token>& tokens);
-
 	std::unique_ptr<Expr> parse();
 
 private:

@@ -139,6 +139,7 @@
     <ClInclude Include="include/core/Lox.h" />
     <ClInclude Include="include/core/Token.h" />
     <ClInclude Include="include/core/Common.h" />
+    <ClInclude Include="include/core/Error.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include/scanner/Lexer.h" />
@@ -147,6 +148,7 @@
     <ClInclude Include="include/parser/Expr.h" />
     <ClInclude Include="include/parser/Parser.h" />
     <ClInclude Include="include/parser/ASTPrinter.h" />
+    <ClInclude Include="include/parser/Stmt.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include/interpreter/Interpreter.h" />
@@ -155,6 +157,7 @@
     <ClCompile Include="src/parser/Parser.cpp" />
     <ClCompile Include="src/parser/Expr.cpp" />
     <ClCompile Include="src/parser/ASTPrinter.cpp" />
+    <ClCompile Include="src/parser/Stmt.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src/interpreter/Interpreter.cpp" />

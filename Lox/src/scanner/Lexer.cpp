@@ -1,5 +1,6 @@
 #include "scanner/Lexer.h"
 #include <unordered_map>
+#include "core/Error.h"
 
 static const std::unordered_map<std::string, TokenType> keywords = {
     {"and", TokenType::AND},
@@ -102,8 +103,8 @@ void Lexer::tokenize() {
             }
 
             else {
-                std::cout << "Unknown char: [" << c << "] ASCII: " << (int)c << "\n";
-                Lox::error(line, "Unexpected character.");
+                std::string message = "[   " + std::string(1, c) + "   ]: Unexpected operand.";
+                throw LexError(line, message);
             }
     }
 }
@@ -117,15 +118,14 @@ void Lexer::handleStringLiteral() {
     }
 
     if (isAtEnd()) {
-        Lox::error(line, "Unterminated string.");
-        return;
+		throw LexError(line, "Unterminated string.");
     }
     
     // This literal now is ". Consume it.
     advance();
 
     // Trim the surrounding quotes.
-    std::string value = source.substr(start + 1, current - start - 1);
+    std::string value = source.substr(start + 1, current - start - 2);
     addToken(TokenType::STRING, value);
 }
 

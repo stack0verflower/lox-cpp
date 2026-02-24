@@ -13,9 +13,10 @@ This project is my journey through *Crafting Interpreters*, translating the Java
 - ✅ **Chapter 5: Representing Code** — AST node definitions
 - ✅ **Chapter 6: Parsing Expressions** — Recursive descent parser with full expression support
 - ✅ **Chapter 7: Evaluating Expressions** — Tree-walk interpreter with runtime error handling
+- 🔧 **Chapter 8: Statements and State** — Stmt skeleton in place, architectural groundwork done
 
 **Coming Next:**
-- ⏳ Chapter 8: Statements and State
+- ⏳ Chapter 8: Statements and State (in progress)
 - ⏳ Chapter 9: Control Flow
 - ⏳ And more...
 
@@ -26,6 +27,7 @@ Lox/
 ├── include/
 │   ├── core/
 │   │   ├── Common.h
+│   │   ├── Error.h
 │   │   ├── Lox.h
 │   │   └── Token.h
 │   ├── scanner/
@@ -33,7 +35,8 @@ Lox/
 │   ├── parser/
 │   │   ├── ASTPrinter.h
 │   │   ├── Expr.h
-│   │   └── Parser.h
+│   │   ├── Parser.h
+│   │   └── Stmt.h
 │   └── interpreter/
 │       └── Interpreter.h
 ├── src/
@@ -44,7 +47,8 @@ Lox/
 │   ├── parser/
 │   │   ├── ASTPrinter.cpp
 │   │   ├── Expr.cpp
-│   │   └── Parser.cpp
+│   │   ├── Parser.cpp
+│   │   └── Stmt.cpp
 │   ├── interpreter/
 │   │   └── Interpreter.cpp
 │   └── Main.cpp
@@ -55,8 +59,7 @@ Lox/
 │   ├── PARSE_TREE_EXAMPLES.txt
 │   ├── PARSE_TREE_PRACTICE_15_EXAMPLES.txt
 │   └── images/
-│       └──ast_output.png
-│       └──interpreter_output.png
+│       ├── repl_output.png
 ├── test.lox
 └── Lox.vcxproj
 ```
@@ -89,20 +92,32 @@ Lox/
 - Runtime error handling with line number reporting
 - `isTruthy()` following Lox semantics — only `false` and `nil` are falsy
 - Fix for `bool`-in-variant implicit conversion to `double` (C++ quirk with `std::variant`)
+
+### AstPrinter (Chapter 5)
 - Implements the **Visitor pattern** on the AST
 - Traverses the expression tree and pretty-prints it as a **Lisp-style S-expression**
 - Used for debugging and verifying parser correctness
 - Example: `1 + 2 * 3` → `(+ 1.000000 (* 2.000000 3.000000))`
 
-## 🖥️ Interpreter Output (Chapter 7)
+### Lox Driver & REPL (Architectural Refactor)
+- `Lox.cpp` drives the full pipeline — REPL mode and file execution via `run()`
+- Separate error reporting for compiler errors (lexer/parser) vs runtime errors
+- Fixed ***circular dependency*** between `Lox.h` and `Interpreter.h` , `Parser.h` ,`Lexer.h` via proper layering
+- `Common.h` and lower layers kept blind to high-level modules — inner layers don't know about outer ones
+- Added `core/Error.h` with a proper error hierarchy: `LoxError` → `LexError`, `ParseError`, `RuntimeError`
+- Moved includes from headers to implementation files — headers only include what they strictly need
+- Fixed string literal storage bug (trailing quote character)
 
-![Interpreter Output](Lox/docs/images/interpreter_output.png)
+## 🖥️ REPL in Action
+
+![REPL Output](Lox/docs/images/repl_output.png)
 
 ## 🖥️ Parser Output (AST)
 
 The parser prints expressions as a Lisp-style S-expression tree.
 
-![AST Output](Lox/docs/images/ast_output.png)
+<!-- Replace the line below with an actual screenshot: -->
+<!-- ![AST Output](docs/ast_output.png) -->
 
 ## 🔧 Building
 
@@ -128,6 +143,8 @@ Open the `.sln` or `.vcxproj` file and build directly.
 - Visitor pattern implementation differs significantly
 - Proper use of `std::string` and `std::unique_ptr` for AST nodes — since each node has exactly one parent/owner, `unique_ptr` is the right fit over `shared_ptr`
 - `std::variant` with both `bool` and `double` causes implicit conversion issues — C++ prefers converting `bool` to `double`, so comparison results must be explicitly wrapped as `LiteralValue(bool)` to force correct type storage
+- **Circular dependency** is a real C++ problem — solved by enforcing strict layer isolation and avoiding high-level includes in low-level headers
+- **Header discipline** — only include in headers what is needed for the type declarations; move everything else to the `.cpp` file. Critical at scale
 
 ## 🙏 Acknowledgments
 

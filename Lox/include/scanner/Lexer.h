@@ -2,7 +2,6 @@
 #define LEXER_H
 
 #include "core/Token.h"
-#include "core/Lox.h"
 #include <vector>
 
 class Lexer {

@@ -1,14 +1,8 @@
 #include "interpreter/Interpreter.h"
+#include "core/Error.h"
 
-RuntimeError::RuntimeError(const Token& token, const std::string& message) : std::runtime_error(message), token(token) {}
-
-void Interpreter::interpret(const Expr& expression) {
-	try {
-		LiteralValue value = evaluate(expression);
-		std::cout << "Result: " << stringify(value) << std::endl;
-	} catch (RuntimeError& error) {
-		std::cerr << "Runtime error at line " << error.token.line << " '" << error.token.lexeme << "' " << error.what() << std::endl;
-	}
+LiteralValue Interpreter::interpret(const Expr& expression) {
+	return evaluate(expression);
 }
 
 LiteralValue Interpreter::visitBinaryExpr(const Binary& expr) {

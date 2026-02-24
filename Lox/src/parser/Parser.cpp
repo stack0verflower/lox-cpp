@@ -1,16 +1,12 @@
 #include "parser/Parser.h"
+#include "core/Error.h"
 
 // ================================================================================================================================================
 
 Parser::Parser(const std::vector<Token>& tokens) : tokens(tokens), current(0) {}
 
 std::unique_ptr<Expr> Parser::parse() {
-    try {
-        return parseExpression();
-    }
-    catch (const ParseError&) {
-        return nullptr;
-    }
+    return parseExpression();
 }
 
 // ================================================================================================================================================
@@ -18,12 +14,7 @@ std::unique_ptr<Expr> Parser::parse() {
 Token Parser::consume(TokenType type, const std::string& message) {
     if (check(type)) return advance();
 
-    throw error(peek(), message);
-}
-
-Parser::ParseError Parser::error(Token token, const std::string& message) {
-    Lox::error(token.line, message);
-    return ParseError{};
+    throw ParseError(peek(), message);
 }
 
 void Parser::synchronize() {
@@ -176,7 +167,6 @@ std::unique_ptr<Expr> Parser::parsePrimary() {
     }
     // If we reach here, it means we have a syntax error, since we expected a primary expression, but we got something else.
     // We will handle this in the error handling phase, for now we just assume the input is correct.
-    throw error(peek(), "Expect expression.");
+    throw ParseError(peek(), "Expect expression.");
 }
 
-// ================================================================================================================================================
