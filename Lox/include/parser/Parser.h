@@ -3,7 +3,10 @@
 
 #include "core/Token.h"
 #include "parser/Expr.h"
+#include "parser/Stmt.h"
+#include "core/Error.h"
 #include <vector>
+#include <functional>
 
 /*
 * Precedence table for Lox operators:
@@ -57,17 +60,33 @@ private:
 	void synchronize();
 
 public:
-	Parser(const std::vector<Token>& tokens);
-	std::unique_ptr<Expr> parse();
+	std::vector<std::unique_ptr<Stmt>> parse();
+	using ErrorCallback = std::function<void(int line, const std::string& message)>;
+	Parser(const std::vector<Token>& tokens, ErrorCallback onError);
 
 private:
+	ErrorCallback errorCallback;
+
+private:
+	// For statements
+	std::unique_ptr<Stmt> declaration();
+	std::unique_ptr<Stmt> statement();
+
+	std::unique_ptr<Stmt> varDeclaration();
+	std::unique_ptr<Stmt> printStatement();
+	std::vector<std::unique_ptr<Stmt>> blockStatement();
+	std::unique_ptr<Stmt> expressionStatement();
+
+	// For expressions
 	std::unique_ptr<Expr> parseExpression();
+	std::unique_ptr<Expr> parseAssignment();
 	std::unique_ptr<Expr> parseEquality();
 	std::unique_ptr<Expr> parseComparison();
 	std::unique_ptr<Expr> parseTerm();
 	std::unique_ptr<Expr> parseFactor();
 	std::unique_ptr<Expr> parseUnary();
 	std::unique_ptr<Expr> parsePrimary();
+
 private:
 	Token peek() const;
 	bool isAtEnd() const;

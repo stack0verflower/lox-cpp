@@ -1,12 +1,30 @@
-#include "parser/Parser.h"
+﻿#include "parser/Parser.h"
 #include "core/Error.h"
 
 // ================================================================================================================================================
 
-Parser::Parser(const std::vector<Token>& tokens) : tokens(tokens), current(0) {}
+Parser::Parser(const std::vector<Token>& tokens, ErrorCallback onError) : tokens(tokens), current(0), errorCallback(onError) {}
 
-std::unique_ptr<Expr> Parser::parse() {
-    return parseExpression();
+std::vector<std::unique_ptr<Stmt>> Parser::parse() {
+	std::vector<std::unique_ptr<Stmt>> statements;
+
+    while (!isAtEnd()) {
+        try {
+            // statements.push_back(parseDeclaration());
+            // For now, we only have expression statements, so we will just parse expressions.
+            statements.push_back(declaration());
+        } catch (const ParseError& error) {
+            // Call the callback if provided
+            if (errorCallback) {
+                errorCallback(error.token.line, error.what());
+            }
+
+            // Recover and parse remainder, so that we are able to catch all the errors of the file contents at once.
+            synchronize();
+        }
+	}
+
+    return statements;
 }
 
 // ================================================================================================================================================
@@ -85,9 +103,101 @@ bool Parser::check(TokenType type) const {
 
 // ================================================================================================================================================
     
-// Main functions
+std::unique_ptr<Stmt> Parser::declaration() {
+    if (match({ TokenType::VAR })) return varDeclaration();
+
+	// Pipeline, first match a declaration, if not, then match a statement, if not, then we have a syntax error, which will be handled in the error handling phase.
+	return statement();
+}
+
+// Main function for parsing statements
+std::unique_ptr<Stmt> Parser::statement() {
+    if (match({ TokenType::PRINT })) return printStatement();
+    // BlockSmt constructor requires a vector of unique_ptr of statements.
+	if (match({ TokenType::LEFT_BRACE })) return std::make_unique<BlockStmt>(blockStatement());
+    return expressionStatement();
+}
+
+std::unique_ptr<Stmt> Parser::varDeclaration() {
+	Token name = consume(TokenType::IDENTIFIER, "Expect variable name.");
+    std::unique_ptr<Expr> initializer = nullptr;
+
+    if (match({ TokenType::EQUAL })) {
+        initializer = parseExpression();
+    }
+
+    // At this point, you have to consume the semicolon
+    consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
+	return std::make_unique<VarDeclStmt>(name, std::move(initializer));
+}
+
+std::unique_ptr<Stmt> Parser::printStatement() {
+	std::unique_ptr<Expr> value = parseExpression();
+    consume(TokenType::SEMICOLON, "Expect ';' after value.");
+	return std::make_unique<PrintStmt>(std::move(value));
+}
+
+std::vector<std::unique_ptr<Stmt>> Parser::blockStatement() {
+    std::vector<std::unique_ptr<Stmt>> statements;
+
+    while (!isAtEnd() && !check(TokenType::RIGHT_BRACE)) {
+        statements.push_back(declaration());
+    }
+
+    consume(TokenType::RIGHT_BRACE, "Expect '}' after block.");
+    return statements;
+}
+
+std::unique_ptr<Stmt> Parser::expressionStatement() {
+    std::unique_ptr<Expr> value = parseExpression();
+    consume(TokenType::SEMICOLON, "Expect ';' after value.");
+    return std::make_unique<ExprStmt>(std::move(value));
+}
+
+// =================================================================================================================================================
+
+// Main functions for parsing expressions
 std::unique_ptr<Expr> Parser::parseExpression() {
-    return parseEquality();
+    // This will be entry point to parsing assignment expressions
+    // Recall, our pipeline, assignment operator has least precedence. Hence, first, we will enter into assignment operator
+    return parseAssignment();
+}
+
+std::unique_ptr<Expr> Parser::parseAssignment() {
+    /*
+    Suppose take, a = 20, pipeline would be:
+    parseExpression()
+    → parseAssignment()
+        → parseEquality()  [parses left side normally]
+            → ... → parsePrimary()
+                → sees IDENTIFIER "a"
+                → returns VariableExpr("a")
+        ← back in parseAssignment()
+        → sees "=" token — match!
+        → check: is left a VariableExpr? YES
+        → grab name token "a"
+        → parseAssignment() [right side, recursive!]
+            → parseEquality()
+                → ... → parsePrimary()
+                    → sees NUMBER 20
+                    → returns Literal(20)
+        → return Assign("a", Literal(20))
+    → consume SEMICOLON → This is done by expressionStatement, Assignment is a type of expressionStatement
+    */
+
+    std::unique_ptr<Expr> expr = parseEquality();
+    
+    if (match({ TokenType::EQUAL })) {
+        if (auto* var = dynamic_cast<VariableExpr*>(expr.get())) {
+            Token name = var->name;
+            std::unique_ptr<Expr> value = parseAssignment();
+            return std::make_unique<Assign>(name, std::move(value));
+        }
+
+        throw ParseError(previous(), "Invalid assignment target.");
+    }
+
+    return expr;
 }
 
 std::unique_ptr<Expr> Parser::parseEquality() {
@@ -157,6 +267,11 @@ std::unique_ptr<Expr> Parser::parsePrimary() {
 
     if (match({ TokenType::NUMBER, TokenType::STRING })) {
         return std::make_unique<Literal>(previous().literal);
+    }
+
+	// If the token in the current position is an identifier, we will create a VariableExpr for it, and return it.
+    if (match({ TokenType::IDENTIFIER })) {
+        return std::make_unique<VariableExpr>(previous());
     }
 
     if (match({ TokenType::LEFT_PAREN })) {

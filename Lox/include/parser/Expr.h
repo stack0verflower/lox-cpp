@@ -7,20 +7,24 @@
 
 class ExprVisitor;
 class Expr;
+class Assign;
 class Binary;
 class Grouping;
 class Literal;
 class Unary;
+class VariableExpr;
 
 class ExprVisitor {
 public:
 	virtual ~ExprVisitor() = default;
 
 	// One visit method for EACH expression type
+	virtual LiteralValue visitAssignExpr(const Assign& expr) = 0;
 	virtual LiteralValue visitBinaryExpr(const Binary& expr) = 0;
 	virtual LiteralValue visitGroupingExpr(const Grouping& expr) = 0;
 	virtual LiteralValue visitLiteralExpr(const Literal& expr) = 0;
 	virtual LiteralValue visitUnaryExpr(const Unary& expr) = 0;
+	virtual LiteralValue visitVariableExpr(const VariableExpr& expr) = 0;
 };
 
 class Expr {
@@ -35,6 +39,25 @@ public:
 	virtual ~Expr() = default;
 
 	virtual LiteralValue accept(ExprVisitor* visitor) const = 0;
+};
+
+
+class Assign : public Expr {
+public:
+	const Token name;
+	std::unique_ptr<Expr> value;
+
+	Assign(const Token& name, std::unique_ptr<Expr> value);
+
+	/*
+	We return the value because assignment in Lox is an expression, not just a statement. That means it can be used in places like:
+	loxvar a = 0;
+	var b = 0;
+	a = b = 10;  // chained assignment
+	print a;     // 10, The assignment itself produces a value that can be passed to print.
+	*/
+
+	LiteralValue accept(ExprVisitor* visitor) const override;
 };
 
 /*
@@ -80,6 +103,19 @@ public:
 	Token op;
 	std::unique_ptr<Expr> right;
 	Unary(const Token& op, std::unique_ptr<Expr> right);
+
+	LiteralValue accept(ExprVisitor* visitor) const override;
+};
+
+/*
+In declarative statements, say for variable declaration, we have
+var a = 5 + 3;
+So, later, when we are evaluating something like 4 + 5 - a -> This a is the new node type VariableExpr, which is a leaf node, referencing to the value of a
+*/
+class VariableExpr : public Expr {
+public:
+	Token name;
+	VariableExpr(const Token& name);
 
 	LiteralValue accept(ExprVisitor* visitor) const override;
 };

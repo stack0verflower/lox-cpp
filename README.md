@@ -13,10 +13,9 @@ This project is my journey through *Crafting Interpreters*, translating the Java
 - ✅ **Chapter 5: Representing Code** — AST node definitions
 - ✅ **Chapter 6: Parsing Expressions** — Recursive descent parser with full expression support
 - ✅ **Chapter 7: Evaluating Expressions** — Tree-walk interpreter with runtime error handling
-- 🔧 **Chapter 8: Statements and State** — Stmt skeleton in place, architectural groundwork done
+- ✅ **Chapter 8: Statements and State** — Variables, assignment, block scoping, lexical environment chain
 
 **Coming Next:**
-- ⏳ Chapter 8: Statements and State (in progress)
 - ⏳ Chapter 9: Control Flow
 - ⏳ And more...
 
@@ -38,6 +37,7 @@ Lox/
 │   │   ├── Parser.h
 │   │   └── Stmt.h
 │   └── interpreter/
+│       ├── Environment.h
 │       └── Interpreter.h
 ├── src/
 │   ├── core/
@@ -50,17 +50,23 @@ Lox/
 │   │   ├── Parser.cpp
 │   │   └── Stmt.cpp
 │   ├── interpreter/
+│   │   ├── Environment.cpp
 │   │   └── Interpreter.cpp
 │   └── Main.cpp
 ├── docs/
+│   ├── ARCHITECTURE_NOTES.md
+│   ├── ASSIGNMENT_PIPELINE.md
 │   ├── FILE_STRUCTURE.txt
 │   ├── GRAMMAR_NOTATION_REFERENCE.txt
+│   ├── INTERPRETER_PIPELINE.md
 │   ├── PARSER_FUNCTIONS_EXPLAINED.txt
 │   ├── PARSE_TREE_EXAMPLES.txt
 │   ├── PARSE_TREE_PRACTICE_15_EXAMPLES.txt
-│   ├── ARCHITECTURE_NOTES.txt
+│   ├── VISITOR_PATTERN_COMPLETE_FLOW.md
 │   └── images/
-│       ├── repl_output.png
+│   │   └── repl_output.png
+│   │   └── test.png
+│   │   └── test_output.png
 ├── test.lox
 └── Lox.vcxproj
 ```
@@ -103,38 +109,61 @@ Lox/
 ### Lox Driver & REPL (Architectural Refactor)
 - `Lox.cpp` drives the full pipeline — REPL mode and file execution via `run()`
 - Separate error reporting for compiler errors (lexer/parser) vs runtime errors
-- Fixed ***circular dependency*** between `Lox.h` and `Interpreter.h` , `Parser.h` ,`Lexer.h` via proper layering
+- Fixed ***circular dependency*** between `Lox.h` and `Interpreter.h`, `Parser.h`, `Lexer.h` via proper layering
 - `Common.h` and lower layers kept blind to high-level modules — inner layers don't know about outer ones
 - Added `core/Error.h` with a proper error hierarchy: `LoxError` → `LexError`, `ParseError`, `RuntimeError`
 - Moved includes from headers to implementation files — headers only include what they strictly need
 - Fixed string literal storage bug (trailing quote character)
 
+### Statements & State (Chapter 8)
+- `print` statements and expression statements
+- Variable declaration (`var`) and assignment (`=`)
+- Block scoping with `{ }` — variables are local to their block
+- **Lexical environment chain** — `Environment` class with `enclosing` pointer walks up scope chain for variable lookup and assignment
+- `executeBlock()` creates a new child `Environment`, executes statements, then restores the previous scope — with proper cleanup on exceptions via `try/catch/rethrow`
+- Raw pointer used intentionally for `enclosing` — non-owning observer, parent always outlives child
+
 ## 🖥️ REPL in Action
 
 ![REPL Output](Lox/docs/images/repl_output.png)
 
-## 🖥️ Parser Output (AST)
-
-The parser prints expressions as a Lisp-style S-expression tree.
-
-<!-- Replace the line below with an actual screenshot: -->
-<!-- ![AST Output](docs/ast_output.png) -->
-
-## 🔧 Building
+## 🔧 Building & Running
 
 ### Prerequisites
-- C++20 compatible compiler (GCC, Clang, or MSVC)
-- CMake (recommended) or Visual Studio
+- Visual Studio 2019 or later (with C++20 support)
+- Or any C++20 compatible compiler (GCC, Clang)
 
-### Compilation (CMake)
+### Build in Visual Studio
+1. Open `Lox.vcxproj` in Visual Studio
+2. Select your configuration — **Debug** or **Release**
+3. Build the solution: `Ctrl+Shift+B` or **Build → Build Solution**
+4. The executable is output to `x64/Debug/Lox.exe` (or `x64/Release/Lox.exe`)
+
+### Running a `.lox` file
+After building, open a terminal at the root of the repo and run:
+
 ```bash
-mkdir build && cd build
-cmake ..
-make
+# From the repo root
+./x64/Debug/Lox.exe test.lox
+
+# Or with a path to any .lox file
+./x64/Debug/Lox.exe path/to/your/file.lox
 ```
 
-### Compilation (Visual Studio)
-Open the `.sln` or `.vcxproj` file and build directly.
+### REPL mode
+Run without arguments to enter the interactive REPL:
+
+```bash
+./x64/Debug/Lox.exe
+```
+
+### Example `test.lox`
+![text.lox](Lox/docs/images/test.png)
+
+
+Expected output:
+
+![text.lox](Lox/docs/images/test_output.png)
 
 ## 📖 Learning Notes
 
@@ -146,6 +175,7 @@ Open the `.sln` or `.vcxproj` file and build directly.
 - `std::variant` with both `bool` and `double` causes implicit conversion issues — C++ prefers converting `bool` to `double`, so comparison results must be explicitly wrapped as `LiteralValue(bool)` to force correct type storage
 - **Circular dependency** is a real C++ problem — solved by enforcing strict layer isolation and avoiding high-level includes in low-level headers
 - **Header discipline** — only include in headers what is needed for the type declarations; move everything else to the `.cpp` file. Critical at scale
+- **Uninitialized pointers** are a classic C++ footgun — a raw `Environment*` member with no initializer points at garbage memory and causes an instant segfault on first use. Always initialize pointers, either inline (`= nullptr`) or in the constructor initializer list
 
 ## 🙏 Acknowledgments
 

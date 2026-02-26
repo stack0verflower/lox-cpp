@@ -11,6 +11,8 @@
 #include "parser/Parser.h"
 #include "parser/ASTPrinter.h"
 
+// TODO improve code readibility, like use Classname::something rather than something
+
 // Initialize the static member
 bool Lox::hadError = false;
 bool Lox::hadRuntimeError = false;
@@ -78,23 +80,25 @@ void Lox::run(const std::string& source) {
 
         if (hadError) return;
 
-        Parser parser(tokens);
-        std::unique_ptr<Expr> expression = parser.parse();
+        // Parser calls back to report errors
+        Parser parser(tokens, [](int line, const std::string& message) {
+            std::cerr << "[line " << line << "] Parse error: "
+                << message << std::endl;
+            Lox::hadError = true;
+        });
+
+        std::vector<std::unique_ptr<Stmt>> statements = parser.parse();
 
         // Stop if parsing had errors
         if (hadError) return;
 
         // Interpretation phase
         Interpreter interpreter;
-        LiteralValue val = interpreter.interpret(*expression);
-        std::cout << interpreter.stringify(val) << std::endl;
+        interpreter.interpret(statements);
 
-    } catch (const LexError& e) {
+    }
+    catch (const LexError& e) {
         // Lexer throws error, at a point where tokenization broke
-        error(e.line, e.what());
-
-    } catch (const ParseError& e) {
-        // Parser throws ParseError with token info
         error(e.line, e.what());
 
     } catch (const RuntimeError& e) {
@@ -107,6 +111,8 @@ void Lox::run(const std::string& source) {
         std::cerr << "Unexpected error: " << e.what() << std::endl;
         hadError = true;
     }
+
+	// Note, ParseErrors are thrown by Parser itself, so that it can recover from those error and synchronize itself to continue parsing the rest of the file, and report all errors at once. So, we don't catch ParseErrors here, since they are handled internally by the Parser.
 }
 
 void Lox::report(int line, const std::string& where, const std::string& message) {

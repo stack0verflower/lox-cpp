@@ -1,10 +1,33 @@
-// Test program
+print "Hello World!";
+print 3 + 5;
 
-var a = 10;
-var b = 20;
+var x = 10;
+print x;
+// Reassign value
+x = 22;
+print x;
+print "";
+print "NEWLINE!";
+print "";
 
-print a + b;
-
-if (a < b) {
-  print "a is smaller";
+var a = "global a";
+var b = "global b";
+var c = "global c";
+{
+  var a = "outer a";
+  var b = "outer b";
+  {
+    var a = "inner a";
+    print a;
+    print b;
+    print c;
+  }
+  print a;
+  print b;
+  print c;
 }
+print a;
+print b;
+print c;
+
+

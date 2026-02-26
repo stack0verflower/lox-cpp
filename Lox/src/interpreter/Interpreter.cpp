@@ -1,8 +1,43 @@
-#include "interpreter/Interpreter.h"
+﻿#include "interpreter/Interpreter.h"
 #include "core/Error.h"
 
-LiteralValue Interpreter::interpret(const Expr& expression) {
-	return evaluate(expression);
+#include <iostream>
+
+void Interpreter::interpret(const std::vector<std::unique_ptr<Stmt>>& statements) {
+	// here, & means pass the original object
+	// Then, you treat that statements as an object (hence pass its address as *statements), just the difference is that statements is original copy
+	for (auto& statement : statements) {
+		execute(*statement);
+	}
+}
+
+void Interpreter::visitVarDeclStmt(const VarDeclStmt& stmt) {
+	LiteralValue value = nullptr;
+	if (stmt.initializer) {
+		value = evaluate(*stmt.initializer);
+	}
+
+	environment->define(stmt.name.lexeme, value);
+}
+
+void Interpreter::visitExprStmt(const ExprStmt& stmt) {
+	evaluate(*stmt.expression);
+}
+
+void Interpreter::visitPrintStmt(const PrintStmt& stmt) {
+	LiteralValue value = evaluate(*stmt.expression);
+	std::cout << stringify(value) << std::endl;
+}
+
+void Interpreter::visitBlockStmt(const BlockStmt& stmt) {
+	executeBlock(stmt.getStatements(), new Environment(environment));
+}
+
+LiteralValue Interpreter::visitAssignExpr(const Assign& expr) {
+	// Now, we have visited an assignment expr. Now, visit it's Expr, evaluate that. Evaluate does nothing but visit it.
+	LiteralValue value = evaluate(*expr.value);
+	environment->assign(expr.name, value);
+	return value;
 }
 
 LiteralValue Interpreter::visitBinaryExpr(const Binary& expr) {
@@ -88,8 +123,74 @@ LiteralValue Interpreter::visitUnaryExpr(const Unary& expr) {
 	return nullptr;
 }
 
+LiteralValue Interpreter::visitVariableExpr(const VariableExpr& expr) {
+	return environment->get(expr.name);
+}
+
 
 // Private helper methods
+
+void Interpreter::execute(const Stmt& statement) {
+	statement.accept(this);
+}
+
+void Interpreter::executeBlock(const std::vector<std::unique_ptr<Stmt>>& statements, Environment* currEnv) {
+	Environment* previous = environment;  // Save the current environment
+	environment = currEnv;  // Switch to the new environment
+	try {
+		for (const auto& statement : statements) {
+			execute(*statement);
+		}
+	} catch (...) {
+		/*
+		 * catch (...) — The Cleanup Catch
+		 *
+		 * This catch block is NOT here to handle any exception.
+		 * It is here for ONE reason only — guaranteed cleanup.
+		 *
+		 * catch (...) means "catch absolutely anything":
+		 *   - RuntimeError    (type mismatch, undefined variable)
+		 *   - ParseError      (shouldn't reach here, but just in case)
+		 *   - std::exception  (any standard exception)
+		 *   - anything else   (unknown throws)
+		 *
+		 * We don't know what was thrown, we don't care.
+		 * We just need to restore the environment before it propagates.
+		 *
+		 * environment = previous;
+		 *   Restore the environment to what it was before this block.
+		 *   Without this, a RuntimeError mid-block would leave the
+		 *   interpreter stuck in the wrong scope forever.
+		 *
+		 * throw;
+		 *   Re-throw the EXACT same exception that was caught.
+		 *   No new exception, no modification, no swallowing.
+		 *   Just "put it back on the stack and let it go."
+		 *   Whoever called executeBlock() will still see the original
+		 *   exception as if this catch never existed — just with a
+		 *   clean environment now.
+		 *
+		 * Think of it like:
+		 *   "I don't know what went wrong, and it's not my job to fix it.
+		 *    But before I pass the problem up, let me clean up my mess."
+		 * 
+		 * Block4 throws
+			→ Block3 restores → rethrows
+				→ Block2 restores → rethrows
+					→ Block1 restores → rethrows
+						→ Lox.cpp catches → reports error
+
+		 * Each layer cleans up its own mess before passing the problem up. 
+		 * By the time it reaches Lox.cpp the entire environment chain is clean regardless of how deeply nested the error occurred.
+		 */
+
+		environment = previous;  // Restore the previous environment on error
+		throw;  // Re-throw the exception
+	}
+	environment = previous;  // Restore the previous environment after block execution
+	// Delete the currEnv, heap memory
+	delete currEnv;
+}
 
 LiteralValue Interpreter::evaluate(const Expr& expr) {
 	return expr.accept(this);

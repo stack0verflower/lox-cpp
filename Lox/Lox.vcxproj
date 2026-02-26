@@ -152,6 +152,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include/interpreter/Interpreter.h" />
+    <ClInclude Include="include/interpreter/Environment.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src/parser/Parser.cpp" />
@@ -161,6 +162,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src/interpreter/Interpreter.cpp" />
+    <ClCompile Include="src/interpreter/Environment.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

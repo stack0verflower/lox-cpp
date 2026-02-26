@@ -25,3 +25,15 @@ Unary::Unary(const Token& op, std::unique_ptr<Expr> right) : op(op), right(std::
 LiteralValue Unary::accept(ExprVisitor* visitor) const {
 	return visitor->visitUnaryExpr(*this);
 }
+
+VariableExpr::VariableExpr(const Token& name) : name(name) {}
+
+LiteralValue VariableExpr::accept(ExprVisitor* visitor) const {
+	return visitor->visitVariableExpr(*this);
+}
+
+Assign::Assign(const Token& name, std::unique_ptr<Expr> value) : name(name), value(std::move(value)) {}
+
+LiteralValue Assign::accept(ExprVisitor* visitor) const {
+	return visitor->visitAssignExpr(*this);
+}
