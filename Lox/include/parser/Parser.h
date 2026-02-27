@@ -26,7 +26,9 @@ GRAMMAR (Precedence from lowest to highest):
 ────────────────────────────────────────────────────────────────────────────
 
 expression  → assignment
-assignment  → IDENTIFIER "=" assignment | equality
+assignment  → IDENTIFIER "=" assignment | logic_or
+logic_or    → logic_and ( "or" logic_and )* ;
+logic_and   → equality ( "and" equality )* ;
 equality    → comparison ( ( "==" | "!=" ) comparison )*
 comparison  → term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term        → factor ( ( "+" | "-" ) factor )*
@@ -47,6 +49,9 @@ Level 7 (Highest): () (grouping), NUMBER, IDENTIFIER
 
 RULE: Higher precedence = Deeper in tree = Evaluated first
 
+For logical operands, like || and &&, 
+These aren’t like other binary operators because they short-circuit. 
+If, after evaluating the left operand, we know what the result of the logical expression must be, we don’t evaluate the right operand.
 */
 
 class Parser {
@@ -73,13 +78,18 @@ private:
 	std::unique_ptr<Stmt> statement();
 
 	std::unique_ptr<Stmt> varDeclaration();
+	std::unique_ptr<Stmt> forStatement();
+	std::unique_ptr<Stmt> ifStatement();
 	std::unique_ptr<Stmt> printStatement();
+	std::unique_ptr<Stmt> whileStatement();
 	std::vector<std::unique_ptr<Stmt>> blockStatement();
 	std::unique_ptr<Stmt> expressionStatement();
 
 	// For expressions
 	std::unique_ptr<Expr> parseExpression();
 	std::unique_ptr<Expr> parseAssignment();
+	std::unique_ptr<Expr> parseOr();
+	std::unique_ptr<Expr> parseAnd();
 	std::unique_ptr<Expr> parseEquality();
 	std::unique_ptr<Expr> parseComparison();
 	std::unique_ptr<Expr> parseTerm();

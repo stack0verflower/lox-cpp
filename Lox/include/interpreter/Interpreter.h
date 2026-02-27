@@ -16,13 +16,16 @@ public:
 
 	void visitVarDeclStmt(const VarDeclStmt& stmt) override;
 	void visitExprStmt(const ExprStmt& stmt) override;
+	void visitIfStmt(const IfStmt& stmt) override;
 	void visitPrintStmt(const PrintStmt& stmt) override;
+	void visitWhileStmt(const WhileStmt& stmt) override;
 	void visitBlockStmt(const BlockStmt& stmt) override;
 
 	LiteralValue visitAssignExpr(const Assign& expr) override;
 	LiteralValue visitBinaryExpr(const Binary& expr) override;
 	LiteralValue visitGroupingExpr(const Grouping& expr) override;
 	LiteralValue visitLiteralExpr(const Literal& expr) override;
+	LiteralValue visitLogicalExpr(const Logical& expr) override;
 	LiteralValue visitUnaryExpr(const Unary& expr) override;
 	LiteralValue visitVariableExpr(const VariableExpr& expr) override;
 

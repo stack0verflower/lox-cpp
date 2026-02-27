@@ -1,33 +1,91 @@
-print "Hello World!";
-print 3 + 5;
+// ============================================
+// Lox Comprehensive Test — Chapters 4-9
+// ============================================
 
+// --- Variables & Arithmetic ---
 var x = 10;
-print x;
-// Reassign value
-x = 22;
-print x;
-print "";
-print "NEWLINE!";
-print "";
+var y = 3;
+print x + y;       // 13
+print x - y;       // 7
+print x * y;       // 30
+print x / y;       // 3.333...
+print x == y;      // false
+print x != y;      // true
+print x > y;       // true
+print x <= y;      // false
 
-var a = "global a";
-var b = "global b";
-var c = "global c";
+// --- Strings ---
+var name = "Lox";
+var version = "v0.9";
+print name + " " + version;  // Lox v0.9
+
+// --- Booleans & Nil ---
+var flag = true;
+var nothing = nil;
+print flag;        // true
+print nothing;     // nil
+print !flag;       // false
+
+// --- Scoping ---
+var a = "global";
 {
-  var a = "outer a";
-  var b = "outer b";
-  {
-    var a = "inner a";
-    print a;
-    print b;
-    print c;
-  }
-  print a;
-  print b;
-  print c;
+    var a = "outer";
+    {
+        var a = "inner";
+        print a;   // inner
+    }
+    print a;       // outer
 }
-print a;
-print b;
-print c;
+print a;           // global
 
+// --- Assignment ---
+var counter = 0;
+counter = counter + 1;
+counter = counter + 1;
+print counter;     // 2
 
+// --- If / Else ---
+var score = 85;
+if (score >= 90) {
+    print "A";
+} else if (score >= 80) {
+    print "B";    // B
+} else {
+    print "C";
+}
+
+// --- While Loop ---
+var i = 1;
+var sum = 0;
+while (i <= 10) {
+    sum = sum + i;
+    i = i + 1;
+}
+print sum;         // 55
+
+// --- For Loop ---
+var factorial = 1;
+for (var n = 1; n <= 6; n = n + 1) {
+    factorial = factorial * n;
+}
+print factorial;   // 720
+
+// --- Fibonacci (for loop, no increment) ---
+var fa = 0;
+var fb = 1;
+for (; fa < 100; ) {
+    print fa;
+    var temp = fa;
+    fa = fb;
+    fb = temp + fb;
+}
+// 0 1 1 2 3 5 8 13 21 34 55 89
+
+// --- Nested Scopes + Loops ---
+var result = 0;
+for (var outer = 1; outer <= 3; outer = outer + 1) {
+    for (var inner = 1; inner <= 3; inner = inner + 1) {
+        result = result + 1;
+    }
+}
+print result;      // 9

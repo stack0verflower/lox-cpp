@@ -4,12 +4,24 @@ program        → statement* EOF ;
 declaration    → varDecl
 			   | statement ;
 
+This is not a precedence rule. We are just checking if a statement begins with what keyword and essigning them that.
 statement      → exprStmt
+			   | forStmt
+			   | ifStmt
                | printStmt
+			   | whileStmt
 			   | block ;
 
+
 exprStmt       → expression ";" ;
+ifStmt         → "if" "(" expression ")" statement
+			   ( "else" statement )? ;
 printStmt      → "print" expression ";" ;
+whileStmt      → "while" "(" expression ")" statement ;
+
+forStmt        → "for" "(" ( varDecl | exprStmt | ";" )
+				 expression? ";"
+				 expression? ")" statement ;
 
 This varDecl has this syntax:
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
@@ -34,8 +46,10 @@ class Stmt;
 
 class VarDeclStmt;
 class ExprStmt;
+class IfStmt;
 class PrintStmt;
 class BlockStmt;
+class WhileStmt;
 
 class StmtVisitor {
 public:
@@ -45,9 +59,11 @@ public:
 	virtual void visitVarDeclStmt(const VarDeclStmt& stmt) = 0;
 
 	virtual void visitExprStmt(const ExprStmt& stmt) = 0;
+	virtual void visitIfStmt(const IfStmt& stmt) = 0;
 	virtual void visitPrintStmt(const PrintStmt& stmt) = 0;
 
 	virtual void visitBlockStmt(const BlockStmt& stmt) = 0;
+	virtual void visitWhileStmt(const WhileStmt& stmt) = 0;
 };
 
 class Stmt {
@@ -83,6 +99,21 @@ public:
 	void accept(StmtVisitor* visitor) const override;
 };
 
+class IfStmt : public Stmt {
+public:
+	std::unique_ptr<Expr> condition;
+	/*
+	thenBranch houses what needs to be done. Now, if it is a block of Stmt, already being parsed under BlockStmt, so a pointer to that statement type.
+	If we have only single statement, like if(this) print "Hello";, then a pointer to single statement.
+	*/
+
+	std::unique_ptr<Stmt> thenBranch;
+	std::unique_ptr<Stmt> elseBranch;
+
+	explicit IfStmt(std::unique_ptr<Expr> condition, std::unique_ptr<Stmt> thenBranch, std::unique_ptr<Stmt> elseBranch);
+	void accept(StmtVisitor* visitor) const override;
+};
+
 class PrintStmt : public Stmt {
 public:
 	std::unique_ptr<Expr> expression;
@@ -99,6 +130,15 @@ public:
 	explicit BlockStmt(std::vector<std::unique_ptr<Stmt>> statements);
 	const std::vector<std::unique_ptr<Stmt>>& getStatements() const;
 
+	void accept(StmtVisitor* visitor) const override;
+};
+
+class WhileStmt : public Stmt {
+public:
+	std::unique_ptr<Expr> condition;
+	std::unique_ptr<Stmt> body;
+
+	explicit WhileStmt(std::unique_ptr<Expr> condition, std::unique_ptr<Stmt> body);
 	void accept(StmtVisitor* visitor) const override;
 };
 

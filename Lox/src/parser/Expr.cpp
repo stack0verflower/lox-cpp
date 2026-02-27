@@ -1,8 +1,7 @@
 #include "parser/Expr.h"
 
 Binary::Binary(std::unique_ptr<Expr> left, const Token& op, std::unique_ptr<Expr> right)
-	: left(std::move(left)), op(op), right(std::move(right)) {
-}
+	: left(std::move(left)), op(op), right(std::move(right)) {}
 
 LiteralValue Binary::accept(ExprVisitor* visitor) const {
 	return visitor->visitBinaryExpr(*this);
@@ -36,4 +35,11 @@ Assign::Assign(const Token& name, std::unique_ptr<Expr> value) : name(name), val
 
 LiteralValue Assign::accept(ExprVisitor* visitor) const {
 	return visitor->visitAssignExpr(*this);
+}
+
+Logical::Logical(std::unique_ptr<Expr> left, Token op, std::unique_ptr<Expr> right) 
+	: left(std::move(left)), op(op), right(std::move(right)) {}
+
+LiteralValue Logical::accept(ExprVisitor* visitor) const {
+	return visitor->visitLogicalExpr(*this);
 }

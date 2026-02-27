@@ -93,12 +93,12 @@ void Lexer::tokenize() {
         default:
             // 2. Number literals
             // Why this here? Because, case statements must be followed by a CONSTANT, and isdigit() is not that.
-            if (isdigit(c)) {
+            if (std::isdigit(c)) {
                 handleNumberLiteral();
             }
 
             // 3. Identifiers and keywords
-            else if (isalpha(c)) {
+            else if (std::isalpha(c)) {
                 handleIdentifier();
             }
 
@@ -130,16 +130,16 @@ void Lexer::handleStringLiteral() {
 }
 
 void Lexer::handleNumberLiteral() {
-    while (isdigit(peek())) advance();
+    while (std::isdigit(peek())) advance();
 
     // You broke, either the '.' was encountered of decimal, or, it terminated due to end of number literal.
     // Handle decimal case
-    if (peek() == '.' && isdigit(peekNext())) {
+    if (peek() == '.' && std::isdigit(peekNext())) {
         // Consume the "."
         advance();
 
         // Move on to fractional parts
-        while (isdigit(peek())) advance();
+        while (std::isdigit(peek())) advance();
     }
 
     // std::stod is a standard library function that converts a std::string into a double.
@@ -157,7 +157,7 @@ void Lexer::handleIdentifier() {
     */
 
 
-    while (isalnum(peek())) advance();
+    while (std::isalnum(peek())) advance();
     std::string text = source.substr(start, current - start);
 
     auto it = keywords.find(text);

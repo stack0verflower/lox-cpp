@@ -14,10 +14,13 @@ This project is my journey through *Crafting Interpreters*, translating the Java
 - ✅ **Chapter 6: Parsing Expressions** — Recursive descent parser with full expression support
 - ✅ **Chapter 7: Evaluating Expressions** — Tree-walk interpreter with runtime error handling
 - ✅ **Chapter 8: Statements and State** — Variables, assignment, block scoping, lexical environment chain
+- ✅ **Chapter 9: Control Flow** — `if`/`else`, `while`, `for` (desugared), logical `and`/`or` — Lox is now Turing complete
 
 **Coming Next:**
-- ⏳ Chapter 9: Control Flow
-- ⏳ And more...
+- ⏳ Chapter 10: Functions
+- ⏳ Chapter 11: Resolving and Binding
+- ⏳ Chapter 12: Classes
+- ⏳ Chapter 13: Inheritance
 
 ## 📁 Project Structure
 
@@ -62,12 +65,11 @@ Lox/
 │   ├── PARSER_FUNCTIONS_EXPLAINED.txt
 │   ├── PARSE_TREE_EXAMPLES.txt
 │   ├── PARSE_TREE_PRACTICE_15_EXAMPLES.txt
+│   ├── TURING_COMPLETENESS.md
 │   ├── VISITOR_PATTERN_COMPLETE_FLOW.md
 │   └── images/
-│   │   └── repl_output.png
-│   │   └── test.png
-│   │   └── test_output.png
-├── test.lox
+│       ├── repl_output.png
+│       └── test_output.png
 └── Lox.vcxproj
 ```
 
@@ -123,6 +125,13 @@ Lox/
 - `executeBlock()` creates a new child `Environment`, executes statements, then restores the previous scope — with proper cleanup on exceptions via `try/catch/rethrow`
 - Raw pointer used intentionally for `enclosing` — non-owning observer, parent always outlives child
 
+### Control Flow (Chapter 9)
+- `if` / `else if` / `else` — `else if` falls out naturally from the grammar, no special case needed
+- `while` loops
+- `for` loops — **desugared** into `while` at parse time, no new AST node or interpreter logic needed
+- Logical `and` / `or` with **short-circuit evaluation** — `and` returns first falsy value, `or` returns first truthy value
+- Lox is now **Turing complete** — can compute anything computable
+
 ## 🖥️ REPL in Action
 
 ![REPL Output](Lox/docs/images/repl_output.png)
@@ -157,13 +166,87 @@ Run without arguments to enter the interactive REPL:
 ./x64/Debug/Lox.exe
 ```
 
-### Example `test.lox`
-![text.lox](Lox/docs/images/test.png)
+### Comprehensive Example
+```lox
+// --- Variables & Arithmetic ---
+var x = 10;
+var y = 3;
+print x + y;        // 13
+print x * y;        // 30
+print x == y;       // false
+print x > y;        // true
 
+// --- Strings ---
+var name = "Lox";
+print name + " v0.9"; // Lox v0.9
 
-Expected output:
+// --- Scoping ---
+var a = "global";
+{
+    var a = "outer";
+    {
+        var a = "inner";
+        print a;    // inner
+    }
+    print a;        // outer
+}
+print a;            // global
 
-![text.lox](Lox/docs/images/test_output.png)
+// --- If / Else If / Else ---
+var score = 85;
+if (score >= 90) {
+    print "A";
+} else if (score >= 80) {
+    print "B";      // B
+} else {
+    print "C";
+}
+
+// --- While Loop ---
+var i = 1;
+var sum = 0;
+while (i <= 10) {
+    sum = sum + i;
+    i = i + 1;
+}
+print sum;          // 55
+
+// --- For Loop ---
+var factorial = 1;
+for (var n = 1; n <= 6; n = n + 1) {
+    factorial = factorial * n;
+}
+print factorial;    // 720
+
+// --- Fibonacci ---
+var fa = 0;
+var fb = 1;
+for (; fa < 100; ) {
+    print fa;
+    var temp = fa;
+    fa = fb;
+    fb = temp + fb;
+}
+// 0 1 1 2 3 5 8 13 21 34 55 89
+
+// --- Nested Loops ---
+var result = 0;
+for (var outer = 1; outer <= 3; outer = outer + 1) {
+    for (var inner = 1; inner <= 3; inner = inner + 1) {
+        result = result + 1;
+    }
+}
+print result;       // 9
+
+// --- Logical Operators ---
+print true and false;   // false
+print false or true;    // true
+print nil or "default"; // default (short-circuit)
+```
+
+### Output
+
+![REPL Output](Lox/docs/images/test_output.png)
 
 ## 📖 Learning Notes
 
@@ -176,6 +259,8 @@ Expected output:
 - **Circular dependency** is a real C++ problem — solved by enforcing strict layer isolation and avoiding high-level includes in low-level headers
 - **Header discipline** — only include in headers what is needed for the type declarations; move everything else to the `.cpp` file. Critical at scale
 - **Uninitialized pointers** are a classic C++ footgun — a raw `Environment*` member with no initializer points at garbage memory and causes an instant segfault on first use. Always initialize pointers, either inline (`= nullptr`) or in the constructor initializer list
+- **For loop desugaring** — `for` is not a new interpreter concept, just the parser assembling `while` + `BlockStmt` nodes. The interpreter never knows a `for` loop existed
+- **`std::move` is non-negotiable with `unique_ptr`** — passing a `unique_ptr` without `std::move` is a compile error (copy constructor is deleted by design)
 
 ## 🙏 Acknowledgments
 
@@ -188,4 +273,3 @@ This is a learning project based on *Crafting Interpreters*. The original book a
 
 ---
 
-⭐ Star this repo if you're also learning from *Crafting Interpreters*!

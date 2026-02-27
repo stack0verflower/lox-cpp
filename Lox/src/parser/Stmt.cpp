@@ -28,3 +28,16 @@ void BlockStmt::accept(StmtVisitor* visitor) const {
 	visitor->visitBlockStmt(*this);
 }
 
+IfStmt::IfStmt(std::unique_ptr<Expr> condition, std::unique_ptr<Stmt> thenBranch, std::unique_ptr<Stmt> elseBranch) 
+	: condition(std::move(condition)), thenBranch(std::move(thenBranch)), elseBranch(std::move(elseBranch)) {}
+
+void IfStmt::accept(StmtVisitor* visitor) const {
+	visitor->visitIfStmt(*this);
+}
+
+WhileStmt::WhileStmt(std::unique_ptr<Expr> condition, std::unique_ptr<Stmt> body) 
+	: condition(std::move(condition)), body(std::move(body)) {}
+
+void WhileStmt::accept(StmtVisitor* visitor) const {
+	visitor->visitWhileStmt(*this);
+}

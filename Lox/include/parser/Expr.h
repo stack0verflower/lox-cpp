@@ -11,6 +11,7 @@ class Assign;
 class Binary;
 class Grouping;
 class Literal;
+class Logical;
 class Unary;
 class VariableExpr;
 
@@ -23,6 +24,7 @@ public:
 	virtual LiteralValue visitBinaryExpr(const Binary& expr) = 0;
 	virtual LiteralValue visitGroupingExpr(const Grouping& expr) = 0;
 	virtual LiteralValue visitLiteralExpr(const Literal& expr) = 0;
+	virtual LiteralValue visitLogicalExpr(const Logical& expr) = 0;
 	virtual LiteralValue visitUnaryExpr(const Unary& expr) = 0;
 	virtual LiteralValue visitVariableExpr(const VariableExpr& expr) = 0;
 };
@@ -95,6 +97,16 @@ public:
 	LiteralValue value;
 	Literal(const LiteralValue& value);
 
+	LiteralValue accept(ExprVisitor* visitor) const override;
+};
+
+class Logical : public Expr {
+public:
+	std::unique_ptr<Expr> left;
+	Token op;
+	std::unique_ptr<Expr> right;
+
+	Logical(std::unique_ptr<Expr> left, Token op, std::unique_ptr<Expr> right);
 	LiteralValue accept(ExprVisitor* visitor) const override;
 };
 

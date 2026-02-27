@@ -24,9 +24,23 @@ void Interpreter::visitExprStmt(const ExprStmt& stmt) {
 	evaluate(*stmt.expression);
 }
 
+void Interpreter::visitIfStmt(const IfStmt& stmt) {
+	if (isTruthy(evaluate(*stmt.condition))) {
+		execute(*stmt.thenBranch);
+	} else if (stmt.elseBranch != nullptr) {
+		execute(*stmt.elseBranch);
+	}
+}
+
 void Interpreter::visitPrintStmt(const PrintStmt& stmt) {
 	LiteralValue value = evaluate(*stmt.expression);
 	std::cout << stringify(value) << std::endl;
+}
+
+void Interpreter::visitWhileStmt(const WhileStmt& stmt) {
+	while (isTruthy(evaluate(*stmt.condition))) {
+		execute(*stmt.body);
+	}
 }
 
 void Interpreter::visitBlockStmt(const BlockStmt& stmt) {
@@ -104,6 +118,23 @@ LiteralValue Interpreter::visitGroupingExpr(const Grouping& expr) {
 
 LiteralValue Interpreter::visitLiteralExpr(const Literal& expr) {
 	return expr.value;
+}
+
+LiteralValue Interpreter::visitLogicalExpr(const Logical& expr) {
+	LiteralValue left = evaluate(*expr.left);
+
+	// Short circuit. If left expression evaluates to True, no need to check right expression for logical OR.
+	if (expr.op.type == TokenType::OR) {
+		// left is a LiteralValue. Our whole interpreter knows LiteralValue as the literal data type. 
+		// Hence returning left instead of true makes sense. We are always performing operation on LiteralValue and not boolean themselves, or any other primitive data type as in individual themselves.
+		if (isTruthy(left)) return left;	
+	} else {
+		// For logical AND, if left expression evaluates to False, just return false, no need to evaluate right expression
+		if (!isTruthy(left)) return left;
+	}
+
+	// At this stage, we need to evaluate right expression too, and whatever it evaluates too, will be returned.
+	return evaluate(*expr.right);
 }
 
 LiteralValue Interpreter::visitUnaryExpr(const Unary& expr) {
