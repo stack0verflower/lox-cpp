@@ -89,3 +89,8 @@ for (var outer = 1; outer <= 3; outer = outer + 1) {
     }
 }
 print result;      // 9
+
+// --- Logical Operators ---
+print true and false;   // false
+print false or true;    // true
+print nil or "default"; // default (short-circuit)
