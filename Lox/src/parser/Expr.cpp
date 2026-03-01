@@ -1,4 +1,5 @@
 #include "parser/Expr.h"
+#include "parser/Stmt.h"
 
 Binary::Binary(std::unique_ptr<Expr> left, const Token& op, std::unique_ptr<Expr> right)
 	: left(std::move(left)), op(op), right(std::move(right)) {}
@@ -42,4 +43,17 @@ Logical::Logical(std::unique_ptr<Expr> left, Token op, std::unique_ptr<Expr> rig
 
 LiteralValue Logical::accept(ExprVisitor* visitor) const {
 	return visitor->visitLogicalExpr(*this);
+}
+
+CallExpr::CallExpr(std::unique_ptr<Expr> callee, Token paren, std::vector<std::unique_ptr<Expr>> arguments) 
+	: callee(std::move(callee)), paren(paren), arguments(std::move(arguments)) {}
+
+LiteralValue CallExpr::accept(ExprVisitor* visitor) const {
+	return visitor->visitCallExpr(*this);
+}
+
+LambdaExpr::LambdaExpr(std::vector<Token> params, std::vector<std::unique_ptr<Stmt>> body) : params(std::move(params)), body(std::move(body)) {}
+
+LiteralValue LambdaExpr::accept(ExprVisitor* visitor) const {
+	return visitor->visitLambdaExpr(*this);
 }

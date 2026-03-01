@@ -15,10 +15,11 @@ This project is my journey through *Crafting Interpreters*, translating the Java
 - ✅ **Chapter 7: Evaluating Expressions** — Tree-walk interpreter with runtime error handling
 - ✅ **Chapter 8: Statements and State** — Variables, assignment, block scoping, lexical environment chain
 - ✅ **Chapter 9: Control Flow** — `if`/`else`, `while`, `for` (desugared), logical `and`/`or` — Lox is now Turing complete
+- ✅ **Chapter 10: Functions** — first-class functions, closures, return statements, native functions (`clock()`), `LoxCallable` interface, `LoxFunction` runtime object
+- ✅ **Lambda Functions** *(Challenge Extension)* — anonymous function expressions, `LoxLambda` class, immediately invokable, passable as arguments
 
 **Coming Next:**
-- ⏳ Chapter 10: Functions
-- ⏳ Chapter 11: Resolving and Binding
+- ⏳ Chapter 11: Resolving and Binding — fix closures with `shared_ptr` environments (fixes both `LoxFunction` and `LoxLambda`)
 - ⏳ Chapter 12: Classes
 - ⏳ Chapter 13: Inheritance
 
@@ -41,7 +42,9 @@ Lox/
 │   │   └── Stmt.h
 │   └── interpreter/
 │       ├── Environment.h
-│       └── Interpreter.h
+│       ├── Interpreter.h
+│       ├── LoxCallable.h
+│       └── Return.h
 ├── src/
 │   ├── core/
 │   │   └── Lox.cpp
@@ -54,22 +57,28 @@ Lox/
 │   │   └── Stmt.cpp
 │   ├── interpreter/
 │   │   ├── Environment.cpp
-│   │   └── Interpreter.cpp
+│   │   ├── Interpreter.cpp
+│   │   └── LoxCallable.cpp
 │   └── Main.cpp
 ├── docs/
 │   ├── ARCHITECTURE_NOTES.md
 │   ├── ASSIGNMENT_PIPELINE.md
 │   ├── FILE_STRUCTURE.txt
+│   ├── FUNCTION_PIPELINE.md
 │   ├── GRAMMAR_NOTATION_REFERENCE.txt
 │   ├── INTERPRETER_PIPELINE.md
+│   ├── LAMBDA_PIPELINE.md
+│   ├── LOXCALLABLE_PIPELINE.md
 │   ├── PARSER_FUNCTIONS_EXPLAINED.txt
 │   ├── PARSE_TREE_EXAMPLES.txt
 │   ├── PARSE_TREE_PRACTICE_15_EXAMPLES.txt
+│   ├── RECURSIVE_PARSING.pdf
 │   ├── TURING_COMPLETENESS.md
 │   ├── VISITOR_PATTERN_COMPLETE_FLOW.md
 │   └── images/
 │       ├── repl_output.png
 │       └── test_output.png
+├── test.lox
 └── Lox.vcxproj
 ```
 
@@ -132,6 +141,27 @@ Lox/
 - Logical `and` / `or` with **short-circuit evaluation** — `and` returns first falsy value, `or` returns first truthy value
 - Lox is now **Turing complete** — can compute anything computable
 
+### Functions (Chapter 10)
+- `fun` keyword for function declarations
+- First-class functions — stored in variables, passed as arguments, returned from functions
+- `LoxCallable` abstract base class — interface for everything callable (functions, native functions, future classes)
+- `LoxFunction` runtime object — wraps `FuncStmt` blueprint with a captured closure environment
+- `return` statements — implemented via `ReturnException` to cleanly unwind arbitrarily deep call stacks
+- Arity checking — argument count validated before `call()` is ever invoked
+- Native functions — `clock()` injected into global environment at interpreter startup
+- Function scope — each call creates a fresh `Environment` child of the closure
+- Known limitation: closures over local scopes segfault — fixed in Chapter 11 with `shared_ptr` environments
+
+### Lambda Functions — Challenge Extension (Chapter 10)
+- Anonymous function expressions — `fun(x) { return x * x; }`
+- Parsed in `parsePrimary()` — lambda is an **expression**, produces a value
+- `LambdaExpr` AST node — params + body, no name
+- `LoxLambda` runtime class — inherits `LoxCallable`, identical call mechanics to `LoxFunction`
+- Immediately invokable: `fun(a, b) { return a + b; }(3, 5)`
+- Storable: `var square = fun(x) { return x * x; };`
+- Passable as argument to higher-order functions
+- Same closure limitation as `LoxFunction` — fixed together in Chapter 11
+
 ## 🖥️ REPL in Action
 
 ![REPL Output](Lox/docs/images/repl_output.png)
@@ -168,85 +198,47 @@ Run without arguments to enter the interactive REPL:
 
 ### Comprehensive Example
 ```lox
-// --- Variables & Arithmetic ---
-var x = 10;
-var y = 3;
-print x + y;        // 13
-print x * y;        // 30
-print x == y;       // false
-print x > y;        // true
+// 1. Basic lambda stored in variable
+var square = fun(x) { return x * x; };
+print square(5);   // 25
 
-// --- Strings ---
-var name = "Lox";
-print name + " v0.9"; // Lox v0.9
+// 2. Immediately invoked
+print fun(a, b) { return a + b; }(3, 5);  // 8
 
-// --- Scoping ---
-var a = "global";
-{
-    var a = "outer";
-    {
-        var a = "inner";
-        print a;    // inner
-    }
-    print a;        // outer
+// 3. Passed as argument
+fun apply(fn, value) {
+    return fn(value);
 }
-print a;            // global
+print apply(fun(x) { return x * 2; }, 10);  // 20
 
-// --- If / Else If / Else ---
-var score = 85;
-if (score >= 90) {
-    print "A";
-} else if (score >= 80) {
-    print "B";      // B
-} else {
-    print "C";
+// 4. No parameters
+var greet = fun() { return "hello"; };
+print greet();  // hello
+
+// 5. Use Recursion to print 20 Fibonacci series numbers.
+fun fib(n) {
+  if (n <= 1) return n;
+  return fib(n - 2) + fib(n - 1);
 }
 
-// --- While Loop ---
-var i = 1;
-var sum = 0;
-while (i <= 10) {
-    sum = sum + i;
-    i = i + 1;
+for (var i = 0; i < 20; i = i + 1) {
+  print fib(i);
 }
-print sum;          // 55
 
-// --- For Loop ---
-var factorial = 1;
-for (var n = 1; n <= 6; n = n + 1) {
-    factorial = factorial * n;
+// 6. Returned from function, Segmentation fault. fix in chapter 11.
+fun makeAdder(n) {
+    return fun(x) { return x + n; };
 }
-print factorial;    // 720
 
-// --- Fibonacci ---
-var fa = 0;
-var fb = 1;
-for (; fa < 100; ) {
-    print fa;
-    var temp = fa;
-    fa = fb;
-    fb = temp + fb;
-}
-// 0 1 1 2 3 5 8 13 21 34 55 89
-
-// --- Nested Loops ---
-var result = 0;
-for (var outer = 1; outer <= 3; outer = outer + 1) {
-    for (var inner = 1; inner <= 3; inner = inner + 1) {
-        result = result + 1;
-    }
-}
-print result;       // 9
-
-// --- Logical Operators ---
-print true and false;   // false
-print false or true;    // true
-print nil or "default"; // default (short-circuit)
+var add5 = makeAdder(5);
+print add5(3);   // 8
+print add5(10);  // 15
 ```
 
 ### Output
 
-![REPL Output](Lox/docs/images/test_output.png)
+![Test Output](Lox/docs/images/test_output.png)
+
 
 ## 📖 Learning Notes
 
@@ -261,6 +253,9 @@ print nil or "default"; // default (short-circuit)
 - **Uninitialized pointers** are a classic C++ footgun — a raw `Environment*` member with no initializer points at garbage memory and causes an instant segfault on first use. Always initialize pointers, either inline (`= nullptr`) or in the constructor initializer list
 - **For loop desugaring** — `for` is not a new interpreter concept, just the parser assembling `while` + `BlockStmt` nodes. The interpreter never knows a `for` loop existed
 - **`std::move` is non-negotiable with `unique_ptr`** — passing a `unique_ptr` without `std::move` is a compile error (copy constructor is deleted by design)
+- **Exceptions as control flow** — `ReturnException` is not an error, it's an intentional use of C++ exception machinery to unwind the call stack cleanly from any depth back to `LoxFunction::call()`
+- **`shared_ptr` for callables** — functions need shared ownership since multiple variables can reference the same function object. `unique_ptr` would break `var f = someFunction; var g = f;`
+- **Forward declaration breaks circular dependencies** — `LoxCallable.h` forward declares `Interpreter` so headers don't include each other. Full `#include` goes in `.cpp` files only
 
 ## 🙏 Acknowledgments
 
@@ -273,3 +268,4 @@ This is a learning project based on *Crafting Interpreters*. The original book a
 
 ---
 
+⭐ Star this repo if you're also learning from *Crafting Interpreters*!

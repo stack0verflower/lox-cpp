@@ -33,8 +33,12 @@ equality    → comparison ( ( "==" | "!=" ) comparison )*
 comparison  → term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term        → factor ( ( "+" | "-" ) factor )*
 factor      → unary ( ( "*" | "/" ) unary )*
-unary       → ( "!" | "-" ) unary | primary
-primary     → NUMBER | IDENTIFIER | "(" expression ")"
+unary       → ( "!" | "-" ) unary | call;
+call        → primary ( "(" arguments? ")" )* ;
+primary     → NUMBER | IDENTIFIER | "(" expression ")" | "fun" "(" parameters? ")" block   ← lambda
+
+The argument list grammer is:
+arguments   → expression ( "," expression )* ;
 
 PRECEDENCE TABLE (lowest to highest):
 ────────────────────────────────────────────────────────────────────────────
@@ -45,7 +49,8 @@ Level 3:           > >= < <=
 Level 4:           + -
 Level 5:           * /
 Level 6:           ! - (unary)
-Level 7 (Highest): () (grouping), NUMBER, IDENTIFIER
+Level 7:		   function calls
+Level 8: (Highest): () (grouping), NUMBER, IDENTIFIER
 
 RULE: Higher precedence = Deeper in tree = Evaluated first
 
@@ -77,6 +82,7 @@ private:
 	std::unique_ptr<Stmt> declaration();
 	std::unique_ptr<Stmt> statement();
 
+	std::unique_ptr<Stmt> funcDeclaration(const std::string& kind);
 	std::unique_ptr<Stmt> varDeclaration();
 	std::unique_ptr<Stmt> forStatement();
 	std::unique_ptr<Stmt> ifStatement();
@@ -84,6 +90,7 @@ private:
 	std::unique_ptr<Stmt> whileStatement();
 	std::vector<std::unique_ptr<Stmt>> blockStatement();
 	std::unique_ptr<Stmt> expressionStatement();
+	std::unique_ptr<Stmt> returnStatement();
 
 	// For expressions
 	std::unique_ptr<Expr> parseExpression();
@@ -95,9 +102,12 @@ private:
 	std::unique_ptr<Expr> parseTerm();
 	std::unique_ptr<Expr> parseFactor();
 	std::unique_ptr<Expr> parseUnary();
+	std::unique_ptr<Expr> parseCall();
 	std::unique_ptr<Expr> parsePrimary();
 
 private:
+	std::unique_ptr<Expr> finishCall(std::unique_ptr<Expr> callee);
+	std::unique_ptr<Expr> lambdaExpression();
 	Token peek() const;
 	bool isAtEnd() const;
 	Token advance();

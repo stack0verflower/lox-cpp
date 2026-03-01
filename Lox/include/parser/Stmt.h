@@ -1,7 +1,8 @@
 ﻿/*
 program        → statement* EOF ;
 
-declaration    → varDecl
+declaration    → funDecl 
+			   | varDecl
 			   | statement ;
 
 This is not a precedence rule. We are just checking if a statement begins with what keyword and essigning them that.
@@ -9,6 +10,7 @@ statement      → exprStmt
 			   | forStmt
 			   | ifStmt
                | printStmt
+			   | returnStmt
 			   | whileStmt
 			   | block ;
 
@@ -28,6 +30,12 @@ varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 
 Block has this syntax.
 block          → "{" declaration* "}" ;
+
+funDecl        → "fun" function ;
+function       → IDENTIFIER "(" parameters? ")" block ;
+parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
+
+returnStmt     → "return" expression? ";" ;
 */
 
 /*
@@ -50,6 +58,8 @@ class IfStmt;
 class PrintStmt;
 class BlockStmt;
 class WhileStmt;
+class FuncStmt;
+class ReturnStmt;
 
 class StmtVisitor {
 public:
@@ -64,6 +74,9 @@ public:
 
 	virtual void visitBlockStmt(const BlockStmt& stmt) = 0;
 	virtual void visitWhileStmt(const WhileStmt& stmt) = 0;
+	
+	virtual void visitFuncStmt(const FuncStmt& stmt) = 0;
+	virtual void visitReturnStmt(const ReturnStmt& stmt) = 0;
 };
 
 class Stmt {
@@ -139,6 +152,25 @@ public:
 	std::unique_ptr<Stmt> body;
 
 	explicit WhileStmt(std::unique_ptr<Expr> condition, std::unique_ptr<Stmt> body);
+	void accept(StmtVisitor* visitor) const override;
+};
+
+class FuncStmt : public Stmt {
+public:
+	Token name;
+	std::vector<Token> params;
+	std::vector<std::unique_ptr<Stmt>> body;	// body is likely a block statement.
+
+	explicit FuncStmt(Token name, std::vector<Token> params, std::vector<std::unique_ptr<Stmt>> body);
+	void accept(StmtVisitor* visitor) const override;
+};
+
+class ReturnStmt : public Stmt {
+public:
+	Token keyword;
+	std::unique_ptr<Expr> value;
+
+	explicit ReturnStmt(Token keyword, std::unique_ptr<Expr> value);
 	void accept(StmtVisitor* visitor) const override;
 };
 

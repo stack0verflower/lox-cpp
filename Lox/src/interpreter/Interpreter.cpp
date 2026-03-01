@@ -1,7 +1,24 @@
 ﻿#include "interpreter/Interpreter.h"
+#include "interpreter/LoxCallable.h"
 #include "core/Error.h"
+#include "interpreter/Return.h"
 
 #include <iostream>
+
+Interpreter::Interpreter() {
+	// This is classic, injecting into global scope.
+	// This is how std libraries are injected.
+
+	struct ClockFn : public LoxCallable {
+		int arity() override { return 0; }
+		LiteralValue call(Interpreter& interpreter, std::vector<LiteralValue> arguments) override {
+			return (double)clock() / CLOCKS_PER_SEC;
+		}
+		std::string toString() { return "<native fn>"; }
+	};
+
+	globalEnv.define("clock", std::make_shared<ClockFn>());
+}
 
 void Interpreter::interpret(const std::vector<std::unique_ptr<Stmt>>& statements) {
 	// here, & means pass the original object
@@ -45,6 +62,23 @@ void Interpreter::visitWhileStmt(const WhileStmt& stmt) {
 
 void Interpreter::visitBlockStmt(const BlockStmt& stmt) {
 	executeBlock(stmt.getStatements(), new Environment(environment));
+}
+
+// This is parser phase. Visit here, create a defination of function in environment and move on.
+// visitCallExpr is calltime phase, when function is actually invoked.
+void Interpreter::visitFuncStmt(const FuncStmt& stmt) {
+	// Wrap into a LoxFunction, and cast that into a shared_ptr, as env constructor takes a literal value, which has a shared_ptr<LoxCallable>
+	// stmt is casted into LoxFunction, which is a LoxCallable, then a shared_ptr is made of it.
+
+	auto function = std::make_shared<LoxFunction>(stmt, environment);
+	environment->define(stmt.name.lexeme, function);
+}
+
+void Interpreter::visitReturnStmt(const ReturnStmt& stmt) {
+	LiteralValue value = nullptr;
+	if (stmt.value) value = evaluate(*stmt.value);
+
+	throw ReturnException(value);
 }
 
 LiteralValue Interpreter::visitAssignExpr(const Assign& expr) {
@@ -156,6 +190,44 @@ LiteralValue Interpreter::visitUnaryExpr(const Unary& expr) {
 
 LiteralValue Interpreter::visitVariableExpr(const VariableExpr& expr) {
 	return environment->get(expr.name);
+}
+
+LiteralValue Interpreter::visitCallExpr(const CallExpr& expr) {
+	LiteralValue callee = evaluate(*expr.callee);
+
+	std::vector<LiteralValue> arguments;
+	for (const auto& argument : expr.arguments) {
+		arguments.push_back(evaluate(*argument));
+	}
+
+	// This checks if callee is a LoxCallable shared_ptr. We will spit out errors in cases like "Hello"(). Strings are not callable.
+	if (!std::holds_alternative<std::shared_ptr<LoxCallable>>(callee)) {
+		throw RuntimeError(expr.paren, "Can only call functions and classes.");
+	}
+
+	// std::get extracts a specific type out of a std::variant
+	/*
+	Say, for a function `add`
+	environment lookup "add"
+    → returns LiteralValue        (the generic box)
+    → holds_alternative check     (peek inside — is it callable?)
+    → std::get<shared_ptr<LoxCallable>>  (unpack + "typecast")
+    → shared_ptr<LoxCallable>     (now you have the actual function)
+    → function->call(...)         (invoke it)
+	*/
+
+	auto function = std::get<std::shared_ptr<LoxCallable>>(callee);
+
+	// function is a ptr, use, -> to access members.
+	if (arguments.size() != function->arity()) {
+		throw RuntimeError(expr.paren, "Expected " + std::to_string(function->arity()) + " arguments but got " + std::to_string(arguments.size()) + ".");
+	}
+
+	return function->call(*this, arguments);
+}
+
+LiteralValue Interpreter::visitLambdaExpr(const LambdaExpr& expr) {
+	return std::make_shared<LoxLambda>(expr, environment);
 }
 
 

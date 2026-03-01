@@ -41,3 +41,16 @@ WhileStmt::WhileStmt(std::unique_ptr<Expr> condition, std::unique_ptr<Stmt> body
 void WhileStmt::accept(StmtVisitor* visitor) const {
 	visitor->visitWhileStmt(*this);
 }
+
+FuncStmt::FuncStmt(Token name, std::vector<Token> params, std::vector<std::unique_ptr<Stmt>> body) 
+	: name(name), params(std::move(params)), body(std::move(body)) {}
+
+void FuncStmt::accept(StmtVisitor* visitor) const {
+	visitor->visitFuncStmt(*this);
+}
+
+ReturnStmt::ReturnStmt(Token keyword, std::unique_ptr<Expr> value) : keyword(keyword), value(std::move(value)) {}
+
+void ReturnStmt::accept(StmtVisitor* visitor) const {
+	visitor->visitReturnStmt(*this);
+}

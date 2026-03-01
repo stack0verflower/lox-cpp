@@ -4,6 +4,9 @@
 #include <memory>
 #include "core/Token.h"
 #include "core/Common.h"
+#include <vector>
+
+class Stmt;
 
 class ExprVisitor;
 class Expr;
@@ -14,6 +17,8 @@ class Literal;
 class Logical;
 class Unary;
 class VariableExpr;
+class CallExpr;
+class LambdaExpr;
 
 class ExprVisitor {
 public:
@@ -27,6 +32,8 @@ public:
 	virtual LiteralValue visitLogicalExpr(const Logical& expr) = 0;
 	virtual LiteralValue visitUnaryExpr(const Unary& expr) = 0;
 	virtual LiteralValue visitVariableExpr(const VariableExpr& expr) = 0;
+	virtual LiteralValue visitCallExpr(const CallExpr& expr) = 0;
+	virtual LiteralValue visitLambdaExpr(const LambdaExpr& expr) = 0;
 };
 
 class Expr {
@@ -132,4 +139,29 @@ public:
 	LiteralValue accept(ExprVisitor* visitor) const override;
 };
 
-#endif
+class CallExpr : public Expr {
+public:
+	/*
+	It stores the callee expression and a list of expressions for the arguments. 
+	It also stores the token for the closing parenthesis.
+	We’ll use that token’s location when we report a runtime error caused by a function call.
+	*/
+
+	std::unique_ptr<Expr> callee;
+	Token paren;
+	std::vector<std::unique_ptr<Expr>> arguments;
+
+	CallExpr(std::unique_ptr<Expr> callee, Token paren, std::vector<std::unique_ptr<Expr>> arguments);
+	LiteralValue accept(ExprVisitor* visitor) const override;
+};
+
+class LambdaExpr : public Expr {
+public:
+	std::vector<Token> params;
+	std::vector<std::unique_ptr<Stmt>> body;
+
+	LambdaExpr(std::vector<Token> params, std::vector<std::unique_ptr<Stmt>> body);
+	LiteralValue accept(ExprVisitor* visitor) const override;
+};
+
+#endif	// EXPR_H

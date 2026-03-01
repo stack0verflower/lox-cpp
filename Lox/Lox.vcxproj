@@ -153,6 +153,8 @@
   <ItemGroup>
     <ClInclude Include="include/interpreter/Interpreter.h" />
     <ClInclude Include="include/interpreter/Environment.h" />
+    <ClInclude Include="include/interpreter/LoxCallable.h" />
+    <ClInclude Include="include/interpreter/Return.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src/parser/Parser.cpp" />
@@ -163,6 +165,7 @@
   <ItemGroup>
     <ClCompile Include="src/interpreter/Interpreter.cpp" />
     <ClCompile Include="src/interpreter/Environment.cpp" />
+    <ClCompile Include="src/interpreter/LoxCallable.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

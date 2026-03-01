@@ -12,6 +12,7 @@ class Interpreter;
 
 class Interpreter : public StmtVisitor, public ExprVisitor {
 public:
+	Interpreter();
 	void interpret(const std::vector<std::unique_ptr<Stmt>>& statements);
 
 	void visitVarDeclStmt(const VarDeclStmt& stmt) override;
@@ -20,6 +21,8 @@ public:
 	void visitPrintStmt(const PrintStmt& stmt) override;
 	void visitWhileStmt(const WhileStmt& stmt) override;
 	void visitBlockStmt(const BlockStmt& stmt) override;
+	void visitFuncStmt(const FuncStmt& stmt) override;
+	void visitReturnStmt(const ReturnStmt& stmt) override;
 
 	LiteralValue visitAssignExpr(const Assign& expr) override;
 	LiteralValue visitBinaryExpr(const Binary& expr) override;
@@ -28,9 +31,13 @@ public:
 	LiteralValue visitLogicalExpr(const Logical& expr) override;
 	LiteralValue visitUnaryExpr(const Unary& expr) override;
 	LiteralValue visitVariableExpr(const VariableExpr& expr) override;
+	LiteralValue visitCallExpr(const CallExpr& expr) override;
+	LiteralValue visitLambdaExpr(const LambdaExpr& expr) override;
 
 	// TODO: privatise this later
 	std::string stringify(LiteralValue value);
+
+	Environment* getGlobalEnv() { return &globalEnv; }
 
 private:
 	// Create a Environment object. Then create a pointer to it.
@@ -38,9 +45,12 @@ private:
 	Environment* environment = &globalEnv;    // points to current scope, no new/delete
 
 	void execute(const Stmt& statement);
-	void executeBlock(const std::vector<std::unique_ptr<Stmt>>& statements, Environment* currEnv);
-	LiteralValue evaluate(const Expr& expr);
 
+public:
+	void executeBlock(const std::vector<std::unique_ptr<Stmt>>& statements, Environment* currEnv);
+
+private:
+	LiteralValue evaluate(const Expr& expr);
 	void checkNumberOperand(const Token& op, const LiteralValue& operand);
 	void checkNumberOperands(const Token& op, const LiteralValue& left, const LiteralValue& right);
 

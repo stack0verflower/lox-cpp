@@ -104,6 +104,7 @@ bool Parser::check(TokenType type) const {
 // ================================================================================================================================================
     
 std::unique_ptr<Stmt> Parser::declaration() {
+    if (match({ TokenType::FUN })) return funcDeclaration("function");
     if (match({ TokenType::VAR })) return varDeclaration();
 
 	// Pipeline, first match a declaration, if not, then match a statement, if not, then we have a syntax error, which will be handled in the error handling phase.
@@ -112,13 +113,39 @@ std::unique_ptr<Stmt> Parser::declaration() {
 
 // Main function for parsing statements
 std::unique_ptr<Stmt> Parser::statement() {
+    // std::cout << "statement() seeing: " << peek().lexeme << std::endl;  for debug
     if (match({ TokenType::FOR })) return forStatement();
     if (match({ TokenType::IF })) return ifStatement();
+    if (match({ TokenType::RETURN })) return returnStatement();
     if (match({ TokenType::PRINT })) return printStatement();
     if (match({ TokenType::WHILE })) return whileStatement();
     // BlockSmt constructor requires a vector of unique_ptr of statements.
 	if (match({ TokenType::LEFT_BRACE })) return std::make_unique<BlockStmt>(blockStatement());
     return expressionStatement();
+}
+
+// Will reuse this in Class's method. Hence `kind`.
+std::unique_ptr<Stmt> Parser::funcDeclaration(const std::string& kind) {
+    Token name = consume(TokenType::IDENTIFIER, "Expect " + kind + " name.");
+    consume(TokenType::LEFT_PAREN, "Expect '(' after " + kind + " name.");
+    std::vector<Token> parameters;
+
+    if (!check(TokenType::RIGHT_PAREN)) {
+        do {
+            if (parameters.size() >= 255) {
+                throw RuntimeError(peek(), "Can't have more than 255 parameters.");
+            }
+
+            parameters.push_back(consume(TokenType::IDENTIFIER, "Expect parameter name."));
+        } while (match({ TokenType::COMMA }));
+    }
+
+    consume(TokenType::RIGHT_PAREN, "Expect ')' after parameters.");
+
+    // Finally, we parse the body and wrap it all up in a function node.
+    consume(TokenType::LEFT_BRACE, "Expect '{' before " + kind + " body.");
+    std::vector<std::unique_ptr<Stmt>> body = blockStatement();
+    return std::make_unique<FuncStmt>(name, std::move(parameters), std::move(body));
 }
 
 std::unique_ptr<Stmt> Parser::varDeclaration() {
@@ -274,6 +301,20 @@ std::unique_ptr<Stmt> Parser::expressionStatement() {
     return std::make_unique<ExprStmt>(std::move(value));
 }
 
+std::unique_ptr<Stmt> Parser::returnStatement() {
+    Token keyword = previous();
+    std::unique_ptr<Expr> value = nullptr;
+
+    // If, return ; => No return value.
+    // If, return something; => parseExpression() returns that something, be it literal, or an AST tree of expressions.
+    if (!check(TokenType::SEMICOLON)) {
+        value = parseExpression();
+    }
+
+    consume(TokenType::SEMICOLON, "Expect ';' after return value.");
+    return std::make_unique<ReturnStmt>(keyword, std::move(value));
+}
+
 // =================================================================================================================================================
 
 // Main functions for parsing expressions
@@ -420,7 +461,50 @@ std::unique_ptr<Expr> Parser::parseUnary() {
         return std::make_unique<Unary>(op, std::move(right));
     }
 
-    return parsePrimary();
+    return parseCall();
+}
+
+std::unique_ptr<Expr> Parser::parseCall() {
+    std::unique_ptr<Expr> expr = parsePrimary();
+
+    // We have function calls such as func()()() => loop till you encounter `(`. parsePrimary() isolates that identifier, `func`
+    /*
+    fn(1)(2)(3)
+        → parse fn          → VariableExpr("fn")
+        → see(→ finishCall(fn)      → CallExpr(fn, [1])
+            → see(→ finishCall(above)   → CallExpr(CallExpr(fn, [1]), [2])
+                → see(→ finishCall(above)   → CallExpr(CallExpr(CallExpr(fn, [1]), [2]), [3])
+    */
+    while (true) {
+        if (match({ TokenType::LEFT_PAREN })) {
+            // Look, this expr is being modified every loop into that nested function. So, for fun(1)(2), we have the function CallExpr(fun, [1]) as callee for argument 2, look at wrapping.
+            expr = std::move(finishCall(std::move(expr)));
+        } else {
+            break;
+        }
+    }
+
+    return expr;
+}
+
+std::unique_ptr<Expr> Parser::finishCall(std::unique_ptr<Expr> callee) {
+    std::vector<std::unique_ptr<Expr>> arguments;
+
+    // 1. This is called by parseCall, after LEFT_PAREN is announced. If, no ')' immediately after '(', means build argument vector.
+    if (!check(TokenType::RIGHT_PAREN)) {
+        // Yeah, this is basically constructing an argument list, if function call is like add(1, 2, 3);
+        do {
+            // Max arg passed is 255. We allow only 254 as `this` is a default argument passed. 
+            if (arguments.size() >= 255) {
+                ParseError(peek(), "Can't have more than 255 arguments.");
+            }
+            arguments.push_back(parseExpression());
+        } while (match({ TokenType::COMMA }));
+    }
+
+    // Consume RIGHT_PAREN
+    Token paren = consume(TokenType::RIGHT_PAREN, "Expect ')' after arguments.");
+    return std::make_unique<CallExpr>(std::move(callee), paren, std::move(arguments));
 }
 
 std::unique_ptr<Expr> Parser::parsePrimary() {
@@ -444,8 +528,30 @@ std::unique_ptr<Expr> Parser::parsePrimary() {
 		consume(TokenType::RIGHT_PAREN, "Expect ')' after expression.");
         return std::make_unique<Grouping>(std::move(expr));
     }
+
+    // For lambda functions
+    if (match({ TokenType::FUN })) {
+        return lambdaExpression();
+    }
+
     // If we reach here, it means we have a syntax error, since we expected a primary expression, but we got something else.
     // We will handle this in the error handling phase, for now we just assume the input is correct.
     throw ParseError(peek(), "Expect expression.");
 }
 
+std::unique_ptr<Expr> Parser::lambdaExpression() {
+    consume(TokenType::LEFT_PAREN, "Expect ( after lambda `fun`");
+    std::vector<Token> params;
+
+    if (!check(TokenType::RIGHT_PAREN)) {
+        do {
+            params.push_back(consume(TokenType::IDENTIFIER, "Expect parameter name."));
+        } while (match({ TokenType::COMMA }));
+    }
+    consume(TokenType::RIGHT_PAREN, "Expect ')' after parameters.");
+    consume(TokenType::LEFT_BRACE, "Expect '{' before lambda body.");
+
+    // Execute this body. blockStatement returns an std::vector<std::unique_ptr<Stmt>>
+    auto body = blockStatement();
+    return std::make_unique<LambdaExpr>(std::move(params), std::move(body));
+}
