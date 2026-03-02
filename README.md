@@ -63,6 +63,7 @@ Lox/
 ├── docs/
 │   ├── ARCHITECTURE_NOTES.md
 │   ├── ASSIGNMENT_PIPELINE.md
+│   ├── CRASH_PIPELINE.pdf
 │   ├── FILE_STRUCTURE.txt
 │   ├── FUNCTION_PIPELINE.md
 │   ├── GRAMMAR_NOTATION_REFERENCE.txt
@@ -161,6 +162,12 @@ Lox/
 - Storable: `var square = fun(x) { return x * x; };`
 - Passable as argument to higher-order functions
 - Same closure limitation as `LoxFunction` — fixed together in Chapter 11
+
+### shared_ptr Environment Refactor ![NEW](https://img.shields.io/badge/-NEW-e74c3c?style=flat)
+- Replaced all raw `Environment*` with `shared_ptr<Environment>`
+- `executeBlock` no longer deletes — callers manage nothing, `shared_ptr` handles lifetime
+- Fixes crash from `delete` on stack-allocated call environments
+- Prepares codebase for Chapter 11 full closure fix
 
 ## 🖥️ REPL in Action
 

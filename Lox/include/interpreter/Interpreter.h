@@ -37,17 +37,17 @@ public:
 	// TODO: privatise this later
 	std::string stringify(LiteralValue value);
 
-	Environment* getGlobalEnv() { return &globalEnv; }
+	std::shared_ptr<Environment> getGlobalEnv() { return globalEnv; }
 
 private:
-	// Create a Environment object. Then create a pointer to it.
-	Environment globalEnv;                    // lives with the Interpreter
-	Environment* environment = &globalEnv;    // points to current scope, no new/delete
+	// MUST initialize with make_shared — declaring without initializing = nullptr = segfault
+	std::shared_ptr<Environment> globalEnv = std::make_shared<Environment>();                    // lives with the Interpreter
+	std::shared_ptr<Environment> environment = globalEnv;    // points to current scope, no new/delete
 
 	void execute(const Stmt& statement);
 
 public:
-	void executeBlock(const std::vector<std::unique_ptr<Stmt>>& statements, Environment* currEnv);
+	void executeBlock(const std::vector<std::unique_ptr<Stmt>>& statements, std::shared_ptr<Environment> currEnv);
 
 private:
 	LiteralValue evaluate(const Expr& expr);

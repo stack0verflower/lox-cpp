@@ -2,7 +2,6 @@
 #include "interpreter/LoxCallable.h"
 #include "core/Error.h"
 #include "interpreter/Return.h"
-
 #include <iostream>
 
 Interpreter::Interpreter() {
@@ -17,7 +16,7 @@ Interpreter::Interpreter() {
 		std::string toString() { return "<native fn>"; }
 	};
 
-	globalEnv.define("clock", std::make_shared<ClockFn>());
+	globalEnv->define("clock", std::make_shared<ClockFn>());
 }
 
 void Interpreter::interpret(const std::vector<std::unique_ptr<Stmt>>& statements) {
@@ -61,7 +60,8 @@ void Interpreter::visitWhileStmt(const WhileStmt& stmt) {
 }
 
 void Interpreter::visitBlockStmt(const BlockStmt& stmt) {
-	executeBlock(stmt.getStatements(), new Environment(environment));
+	auto blockEnv = std::make_shared<Environment>(environment);
+	executeBlock(stmt.getStatements(), blockEnv);
 }
 
 // This is parser phase. Visit here, create a defination of function in environment and move on.
@@ -237,8 +237,8 @@ void Interpreter::execute(const Stmt& statement) {
 	statement.accept(this);
 }
 
-void Interpreter::executeBlock(const std::vector<std::unique_ptr<Stmt>>& statements, Environment* currEnv) {
-	Environment* previous = environment;  // Save the current environment
+void Interpreter::executeBlock(const std::vector<std::unique_ptr<Stmt>>& statements, std::shared_ptr<Environment> currEnv) {
+	std::shared_ptr<Environment> previous = environment;  // Save the current environment
 	environment = currEnv;  // Switch to the new environment
 	try {
 		for (const auto& statement : statements) {
@@ -291,8 +291,6 @@ void Interpreter::executeBlock(const std::vector<std::unique_ptr<Stmt>>& stateme
 		throw;  // Re-throw the exception
 	}
 	environment = previous;  // Restore the previous environment after block execution
-	// Delete the currEnv, heap memory
-	delete currEnv;
 }
 
 LiteralValue Interpreter::evaluate(const Expr& expr) {

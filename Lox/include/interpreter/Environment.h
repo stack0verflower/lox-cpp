@@ -78,12 +78,12 @@ public:
 	
 	Environment();
 	// General rule — always use explicit on single-argument constructors unless you specifically want implicit conversions. Which is almost never.
-	explicit Environment(Environment* enclosing);
+	explicit Environment(std::shared_ptr<Environment> enclosing);
 	
 	void define(const std::string& name, const LiteralValue& value);
 	void assign(const Token& name, const LiteralValue& value);
 	LiteralValue get(const Token& name);
-	Environment* enclosing = nullptr;  // for global scope
+	std::shared_ptr<Environment> enclosing = nullptr;  // for global scope
 
 private:
 	

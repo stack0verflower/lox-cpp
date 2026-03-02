@@ -1,10 +1,9 @@
 #include "interpreter/Environment.h"
 #include "core/Error.h"
-#include <iostream>
 
 Environment::Environment() {}
 
-Environment::Environment(Environment* enclosing) : enclosing(enclosing) {}  // for local scope
+Environment::Environment(std::shared_ptr<Environment> enclosing) : enclosing(std::move(enclosing)) {}  // for local scope
 
 void Environment::define(const std::string& name, const LiteralValue& value) {
 	/*

@@ -24,26 +24,26 @@ public:
 
 class LoxFunction : public LoxCallable {
 public:
-    LoxFunction(const FuncStmt& declaration, Environment* closure);
+    LoxFunction(const FuncStmt& declaration, std::shared_ptr<Environment> closure);
     LiteralValue call(Interpreter& interpreter, std::vector<LiteralValue> arguments) override;
     int arity() override;
     std::string toString() override;
 
 private:
     const FuncStmt& declaration;
-    Environment* closure;
+    std::shared_ptr<Environment> closure;
 };
 
 class LoxLambda : public LoxCallable {
 public:
-    LoxLambda(const LambdaExpr& declaration, Environment* closure);
+    LoxLambda(const LambdaExpr& declaration, std::shared_ptr<Environment> closure);
     LiteralValue call(Interpreter& interpreter, std::vector<LiteralValue> arguments) override;
     int arity() override;
     std::string toString() override;
 
 private:
     const LambdaExpr& declaration;
-    Environment* closure;
+    std::shared_ptr<Environment> closure;
 };
 
 #endif // !LOXCALLABLE_H
