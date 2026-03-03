@@ -302,4 +302,3 @@ print undeclared;
 
 ---
 
-⭐ Star if you're also learning from *Crafting Interpreters*!
