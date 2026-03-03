@@ -7,6 +7,7 @@
 
 #include "core/Error.h"
 #include "interpreter/Interpreter.h"
+#include "interpreter/Resolver.h"
 #include "scanner/Lexer.h"
 #include "parser/Parser.h"
 #include "parser/ASTPrinter.h"
@@ -82,8 +83,7 @@ void Lox::run(const std::string& source) {
 
         // Parser calls back to report errors
         Parser parser(tokens, [](int line, const std::string& message) {
-            std::cerr << "[line " << line << "] Parse error: "
-                << message << std::endl;
+            std::cerr << "\033[31m[ParseError]: " << "[line " << line << "] " << message << "\033[0m" << std::endl;
             Lox::hadError = true;
         });
 
@@ -94,29 +94,51 @@ void Lox::run(const std::string& source) {
 
         // Interpretation phase
         Interpreter interpreter;
+
+        // Resolver performs static analysis and resolves variable references
+        Resolver resolver(interpreter);
+        resolver.resolve(statements);
+
+        // Stop if Resolving had errors
+        if (hadError) return;
+
+        // print warnings in yellow
+        for (auto& warning : resolver.getWarnings()) {
+            std::cout << "\033[33m[Warning] line " << warning.token.line << ": " << warning.message << "\033[0m" << std::endl;
+        }
+
         interpreter.interpret(statements);
 
-    }
-    catch (const LexError& e) {
+    } catch (const LexError& e) {
         // Lexer throws error, at a point where tokenization broke
+        std::cerr << "\033[31m[LexError]: ";
         error(e.line, e.what());
+        return;
 
     } catch (const RuntimeError& e) {
         // Interpreter throws RuntimeError with token info
+        std::cerr << "\033[31m[RuntimeError]: ";
         runtimeError(e);
+        return;
 
-    }
-    catch (const std::exception& e) {
+    } catch (const ResolverError& e) {
+        // Resolver throws error with token info
+        std::cerr << "\033[31m[ResolverError]: ";
+        error(e.token.line, e.what());
+        return;
+
+	} catch (const std::exception& e) {
         // Catch any other unexpected errors
-        std::cerr << "Unexpected error: " << e.what() << std::endl;
+        std::cerr << "\033[31m[Unexpected Error]: " << e.what() << "\033[0m" << std::endl;
         hadError = true;
+        return;
     }
 
 	// Note, ParseErrors are thrown by Parser itself, so that it can recover from those error and synchronize itself to continue parsing the rest of the file, and report all errors at once. So, we don't catch ParseErrors here, since they are handled internally by the Parser.
 }
 
 void Lox::report(int line, const std::string& where, const std::string& message) {
-    std::cerr << "[line " << line << "] Error" << where << ": " << message << std::endl;
+    std::cerr << "[line " << line << "] Error" << where << ": " << message << "\033[0m" << std::endl;
     hadError = true;
 }
 

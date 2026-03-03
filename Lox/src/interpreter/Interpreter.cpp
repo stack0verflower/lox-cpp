@@ -33,7 +33,11 @@ void Interpreter::visitVarDeclStmt(const VarDeclStmt& stmt) {
 		value = evaluate(*stmt.initializer);
 	}
 
-	environment->define(stmt.name.lexeme, value);
+	if (environment == globalEnv) {
+		environment->define(stmt.name.lexeme, value);  // global — name based
+	} else {
+		environment->push_slots(value);           // local — index based
+	}
 }
 
 void Interpreter::visitExprStmt(const ExprStmt& stmt) {
@@ -71,7 +75,11 @@ void Interpreter::visitFuncStmt(const FuncStmt& stmt) {
 	// stmt is casted into LoxFunction, which is a LoxCallable, then a shared_ptr is made of it.
 
 	auto function = std::make_shared<LoxFunction>(stmt, environment);
-	environment->define(stmt.name.lexeme, function);
+	if (environment == globalEnv) {
+		environment->define(stmt.name.lexeme, function);
+	} else {
+		environment->push_slots(function);
+	}
 }
 
 void Interpreter::visitReturnStmt(const ReturnStmt& stmt) {
@@ -84,7 +92,14 @@ void Interpreter::visitReturnStmt(const ReturnStmt& stmt) {
 LiteralValue Interpreter::visitAssignExpr(const Assign& expr) {
 	// Now, we have visited an assignment expr. Now, visit it's Expr, evaluate that. Evaluate does nothing but visit it.
 	LiteralValue value = evaluate(*expr.value);
-	environment->assign(expr.name, value);
+
+	if (locals.count(&expr)) {
+		auto& res = locals.at(&expr);
+		environment->assignAt(res.depth, res.index, value);
+	} else {
+		globalEnv->assign(expr.name, value);
+	}
+
 	return value;
 }
 
@@ -189,7 +204,7 @@ LiteralValue Interpreter::visitUnaryExpr(const Unary& expr) {
 }
 
 LiteralValue Interpreter::visitVariableExpr(const VariableExpr& expr) {
-	return environment->get(expr.name);
+	return lookUpVariable(expr.name, expr);
 }
 
 LiteralValue Interpreter::visitCallExpr(const CallExpr& expr) {
@@ -291,6 +306,20 @@ void Interpreter::executeBlock(const std::vector<std::unique_ptr<Stmt>>& stateme
 		throw;  // Re-throw the exception
 	}
 	environment = previous;  // Restore the previous environment after block execution
+}
+
+void Interpreter::resolve(const Expr& expr, int depth, int index) {
+	locals[&expr] = { depth, index };
+}
+
+LiteralValue Interpreter::lookUpVariable(const Token& name, const Expr& expr) {
+	if (locals.count(&expr)) {
+		// Get that struct.
+		Resolution res = locals[&expr];
+		return environment->getAt(res.depth, res.index);
+	} else {
+		return globalEnv->get(name);
+	}
 }
 
 LiteralValue Interpreter::evaluate(const Expr& expr) {

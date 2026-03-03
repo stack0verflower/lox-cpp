@@ -8,6 +8,7 @@ class LoxError;
 class LexError;
 class ParseError;
 class RuntimeError;
+class ResolverWarning;
 
 class LoxError : public std::runtime_error {
 public:
@@ -26,10 +27,22 @@ public:
     ParseError(const Token& token, const std::string& message) : LoxError(token.line, message), token(token) {}
 };
 
+class ResolverError : public LoxError {
+public:
+    Token token;
+    ResolverError(const Token& token, const std::string& message) : LoxError(token.line, message), token(token) {}
+};
+
 class RuntimeError : public LoxError {
 public:
     Token token;
     RuntimeError(const Token& token, const std::string& message) : LoxError(token.line, message), token(token) {}
+};
+
+struct ResolverWarning {
+    Token token;
+    std::string message;
+    ResolverWarning(const Token& token, const std::string message) : token(token), message(message) {}
 };
 
 #endif // !ERROR_H

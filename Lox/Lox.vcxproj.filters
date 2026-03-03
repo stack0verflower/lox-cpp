@@ -15,70 +15,92 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src/scanner/Lexer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src/core/Lox.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src/Main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src/parser/Parser.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src/parser/Expr.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src/parser/ASTPrinter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src/parser/Stmt.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src/interpreter/Interpreter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src/interpreter/Environment.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="include/core/Lox.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include/core/Token.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include/scanner/Lexer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include/core/Common.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include/core/Error.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include/parser/Expr.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include/parser/Parser.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include/parser/ASTPrinter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include/parser/Stmt.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include/interpreter/Interpreter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include/interpreter/Environment.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include/interpreter/LoxCallable.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-  </ItemGroup>
+    <Filter Include="Source Files\core" />
+    <Filter Include="Source Files\scanner" />
+    <Filter Include="Source Files\parser" />
+    <Filter Include="Source Files\interpreter" />
+    <Filter Include="Header Files\core" />
+    <Filter Include="Header Files\scanner" />
+    <Filter Include="Header Files\parser" />
+    <Filter Include="Header Files\interpreter" />
+</ItemGroup>
+<ItemGroup>
+  <ClCompile Include="src/scanner/Lexer.cpp">
+    <Filter>Source Files\scanner</Filter>
+  </ClCompile>
+  <ClCompile Include="src/core/Lox.cpp">
+    <Filter>Source Files\core</Filter>
+  </ClCompile>
+  <ClCompile Include="src/Main.cpp">
+    <Filter>Source Files</Filter>
+  </ClCompile>
+  <ClCompile Include="src/parser/Parser.cpp">
+    <Filter>Source Files\parser</Filter>
+  </ClCompile>
+  <ClCompile Include="src/parser/Expr.cpp">
+    <Filter>Source Files\parser</Filter>
+  </ClCompile>
+  <ClCompile Include="src/parser/ASTPrinter.cpp">
+    <Filter>Source Files\parser</Filter>
+  </ClCompile>
+  <ClCompile Include="src/parser/Stmt.cpp">
+    <Filter>Source Files\parser</Filter>
+  </ClCompile>
+  <ClCompile Include="src/interpreter/Interpreter.cpp">
+    <Filter>Source Files\interpreter</Filter>
+  </ClCompile>
+  <ClCompile Include="src/interpreter/Environment.cpp">
+    <Filter>Source Files\interpreter</Filter>
+  </ClCompile>
+  <ClCompile Include="src/interpreter/LoxCallable.cpp">
+    <Filter>Source Files\interpreter</Filter>
+  </ClCompile>
+  <ClCompile Include="src/interpreter/Resolver.cpp">
+    <Filter>Source Files\interpreter</Filter>
+  </ClCompile>
+</ItemGroup>
+<ItemGroup>
+  <ClInclude Include="include/core/Lox.h">
+    <Filter>Header Files\core</Filter>
+  </ClInclude>
+  <ClInclude Include="include/core/Token.h">
+    <Filter>Header Files\core</Filter>
+  </ClInclude>
+  <ClInclude Include="include/core/Common.h">
+    <Filter>Header Files\core</Filter>
+  </ClInclude>
+  <ClInclude Include="include/core/Error.h">
+    <Filter>Header Files\core</Filter>
+  </ClInclude>
+  <ClInclude Include="include/scanner/Lexer.h">
+    <Filter>Header Files\scanner</Filter>
+  </ClInclude>
+  <ClInclude Include="include/parser/Expr.h">
+    <Filter>Header Files\parser</Filter>
+  </ClInclude>
+  <ClInclude Include="include/parser/Parser.h">
+    <Filter>Header Files\parser</Filter>
+  </ClInclude>
+  <ClInclude Include="include/parser/ASTPrinter.h">
+    <Filter>Header Files\parser</Filter>
+  </ClInclude>
+  <ClInclude Include="include/parser/Stmt.h">
+    <Filter>Header Files\parser</Filter>
+  </ClInclude>
+  <ClInclude Include="include/interpreter/Interpreter.h">
+    <Filter>Header Files\interpreter</Filter>
+  </ClInclude>
+  <ClInclude Include="include/interpreter/Environment.h">
+    <Filter>Header Files\interpreter</Filter>
+  </ClInclude>
+  <ClInclude Include="include/interpreter/LoxCallable.h">
+    <Filter>Header Files\interpreter</Filter>
+  </ClInclude>
+  <ClInclude Include="include/interpreter/Return.h">
+    <Filter>Header Files\interpreter</Filter>
+  </ClInclude>
+  <ClInclude Include="include/interpreter/Resolver.h">
+    <Filter>Header Files\interpreter</Filter>
+  </ClInclude>
+</ItemGroup>
 </Project>

@@ -1,7 +1,6 @@
 #include "interpreter/LoxCallable.h"
 #include "interpreter/Interpreter.h"
 #include "interpreter/Return.h"
-#include <iostream>
 
 LoxFunction::LoxFunction(const FuncStmt& declaration, std::shared_ptr<Environment> closure) : declaration(declaration), closure(std::move(closure)) {}
 
@@ -16,7 +15,9 @@ LiteralValue LoxFunction::call(Interpreter& interpreter, std::vector<LiteralValu
 			fun add(a, b) => declaration->params has a, b
 			add(1, 2)     => argument list has 1, 2. You are defining a=1, b=2 in environment.
 		*/
-		environment->define(declaration.params[i].lexeme, arguments[i]);
+
+		// These go in function slots.
+		environment->push_slots(arguments[i]);
 	}
 
 	// Execute this declaraction.body(); but if a ReturnException is encountered, return this call.
@@ -44,7 +45,7 @@ LiteralValue LoxLambda::call(Interpreter& interpreter, std::vector<LiteralValue>
 	auto environment = std::make_shared<Environment>(closure);
 
 	for (int i = 0; i < declaration.params.size(); i++) {
-		environment->define(declaration.params[i].lexeme, arguments[i]);
+		environment->push_slots(arguments[i]);
 	}
 
 	try {

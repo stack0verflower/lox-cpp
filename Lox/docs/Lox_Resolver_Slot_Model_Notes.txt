@@ -1,0 +1,254 @@
+Lox Resolver + Slot Model — Internalized Understanding
+
+Conversation Rating: 9.5 / 10
+Reason: This was not about finishing a feature — it was about deeply
+understanding the separation between compile-time resolution and runtime
+execution.
+
+  --------------------------------------------
+  1. The Two Worlds: Resolver vs Interpreter
+  --------------------------------------------
+
+Resolver (Compile-Time)
+
+-   Walks the AST.
+-   Builds temporary scope stacks (symbol tables).
+-   Assigns each local variable: -> depth (how many scopes outward) ->
+    slot index (position inside that scope)
+-   Stores this information in: locals[Expr*] = { depth, index }
+-   Then disappears completely.
+
+Important: Resolver does NOT store values. Resolver does NOT create
+runtime environments. Resolver only computes addressing instructions.
+
+Interpreter (Runtime)
+
+-   Creates Environment objects dynamically.
+-   Each environment has: vector slots
+-   slots only store values.
+-   No names needed for local variables at runtime.
+
+Resolver designs the blueprint. Interpreter builds the building.
+
+  ----------------------------
+  2. What slots Actually Are
+  ----------------------------
+
+slots is just: vector
+
+It does not know: - variable names - lexical structure - scope logic
+
+It only knows: slots[index] = value
+
+It is dumb storage.
+
+  --------------------------------
+  3. What locals Map Actually Is
+  --------------------------------
+
+locals is the routing table.
+
+For each variable expression node: locals[expr] = { depth, index }
+
+At runtime:
+
+    if expr exists in locals:
+        return getAt(depth, index)
+    else:
+        return globalEnv->get(name)
+
+This means: - Local variables use slot indexing. - Globals use
+name-based lookup.
+
+Clean separation.
+
+  ------------------------------
+  4. Declaration vs Assignment
+  ------------------------------
+
+var a = 10; -> VarDeclStmt a = 20; -> AssignExpr
+
+Declaration: - Creates new binding. - Pushes value into slots (local). -
+Or inserts into global map.
+
+Assignment: - Modifies an existing binding. - Uses pre-resolved (depth,
+index) if local. - Otherwise modifies global.
+
+Assignment does NOT create slots.
+
+  ----------------------------
+  5. Lexical Binding Insight
+  ----------------------------
+
+Example:
+
+var a = “global”; { fun showA() { print a; } showA(); var a = “block”;
+showA(); }
+
+Why does this print:
+
+global global
+
+Because:
+
+When resolving print a, the resolver searched: - function scope -> not
+found - block scope -> not found - therefore -> GLOBAL
+
+That decision is frozen into the AST.
+
+Later declaring var a = "block" does NOT affect already resolved
+expressions.
+
+Resolution is static. Execution is mechanical.
+
+  -------------------
+  6. Shadowing Case
+  -------------------
+
+var a = “global”; { var a = “block”; fun showA() { print a; } showA(); }
+
+Now resolver finds a in block scope.
+
+It records: depth = 1 index = 0
+
+At runtime: go up 1 environment read slots[0]
+
+Result: block
+
+Perfect lexical scope.
+
+  ---------------------------
+  7. The Final Mental Model
+  ---------------------------
+
+Resolver decides: WHERE to look.
+
+Interpreter does: JUST retrieve.
+
+Local variables: -> positional (slot-based) -> no runtime name lookup
+
+Global variables: -> name-based lookup
+
+You transitioned from: dynamic name resolution to: static lexical
+addressing
+
+That is a major architectural upgrade.
+
+  -----------------------
+  8. The Real Milestone
+  -----------------------
+
+The breakthrough moment:
+
+“Resolution decides where to look; execution just retrieves.”
+
+This is the separation between: - binding - storage - execution -
+optimization
+
+This is how real interpreters and VMs are structured.
+
+You are now thinking in runtime architecture terms, not just
+implementing a chapter.
+
+  --------------
+  End of Notes
+  --------------
+
+The convo I had:
+==============================================================================================================================
+I did resolver chapter, only error part remaining, now, there, I implemented his challenge too (Yeah, also implemented Lambda function), Our resolver calculates which environment the variable is found in, but it’s still looked up by name in that map. A more efficient environment representation would store local variables in an array and look them up by index. Extend the resolver to associate a unique index for each local variable declared in a scope. When resolving a variable access, look up both the scope the variable is in and its index and store that. In the interpreter, use that to quickly access a variable by its index instead of using a map. Ok, so questions ask henceforth, keep this in mind
+
+==============================================================================================================================
+
+OK, it is working, I created a separate slots vector of LiteralValue (std::variant), to lookup in local derived environments, and then global lookup is still unordered map
+
+==============================================================================================================================
+
+I did all, working as up till now, now I need to understand what I really did Look at this analogy, when my Resolver walks the tree, whenever it gets a new scope, it is equivalent to a notebook, it creates a notebook. Any declaration in that notebook, means we are creating sticky notes, say var a = 11; so that when all notebooks are over, we can still perform variable lookup, for now we know where it is. suppose this is first in that scope. so for that environment, we have slots[0] = a And so on. This part I got. Then comming to depth (jump). In interpreter, when we wish to look up a variable, suppose a, I am pasing two stuffs to it, depth and index, so it goes depth up the enclosure, and gets it in that slot[index]. If it goes all the way up to global, then perform name lookout. This is my mental picture till now
+
+==============================================================================================================================
+
+yeah resolver notebooks are thrown away, in this sense, any variables declared but never used, they are just thrown away
+
+==============================================================================================================================
+
+void Interpreter::visitVarDeclStmt(const VarDeclStmt& stmt) {
+	LiteralValue value = nullptr;
+	if (stmt.initializer) {
+		value = evaluate(*stmt.initializer);
+	}
+
+	if (environment == globalEnv) {
+		environment->define(stmt.name.lexeme, value);  // global — name based
+	} else {
+		environment->push_slots(value);           // local — index based
+	}
+}
+yeah this block does that. ig, what all scope does is provide those sticky notes, like these variables are used, you use them like this, go this up and do that. actual scope is built by Interpreter, and these notes help in lookup
+void Interpreter::resolve(const Expr& expr, int depth, int index) {
+	locals[&expr] = { depth, index };
+}
+This is what Resolver.cpp calls every time, this is sticky notes.
+
+==============================================================================================================================
+
+yeah, I did some assertions and print statements to visualise, it is working fine.
+var a = "global";
+{
+    fun showA() { print a; }
+    showA();
+    var a = "block";
+    showA();
+}
+kinda understanding, this is the output
+searching for: a scopes.size()=2
+  scope[0]: showA=0
+  scope[1]:
+resolveLocal: a ? GLOBAL
+searching for: showA scopes.size()=1
+  scope[0]: showA=0
+resolveLocal: showA depth=0 index=0
+searching for: showA scopes.size()=1
+  scope[0]: showA=0 a=1
+resolveLocal: showA depth=0 index=0
+getAt depth=0 index=0 slots.size()=1
+global
+getAt depth=0 index=0 slots.size()=2
+global
+
+Look, explain we what is happening, what happens when second declaration occurs
+
+==============================================================================================================================
+
+Ah, I get it, a is already resolved and is pointing to global a, and we concluded it is global as while cascading slotes, we never reached a declaration. Ah, , makes so much sense
+
+My hinting was, when print a hits of showA(), Resolver knows that showA requires a, so it binds that this a is present in global.
+No matter the redeclaration, a is still pointed to global.
+
+==============================================================================================================================
+
+var a = "global";
+{
+    var a = "block";
+    fun showA() { print a; }
+    showA();
+    
+    showA();
+}
+This rightfully prints block, ahaha, the mental picture is now clear, what is does and all
+var a = "global";
+{
+
+    fun showA() { print a; }
+    showA();
+    a = "block";
+    showA();
+}
+this too rightfully does that, as assign() cascades all slots, if cant find, modify global
+a="block" is an assignExpr right? not varDecl, that begins with var
+
+==============================================================================================================================
+
+nothing serious, slots is just storing value, yeah, this is great, and the record of that variable being in slots is locals, if locals absent, that means directly look in globalEnv
+
+==============================================================================================================================

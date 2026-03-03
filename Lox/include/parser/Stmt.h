@@ -100,7 +100,6 @@ public:
 	void accept(StmtVisitor* visitor) const override;
 };
 
-
 class ExprStmt : public Stmt {
 	// Expr statement is a statement that consists of a single expression followed by a semicolon.
 	// We built an expression tree for the expression. The root of that tree will be stored as a unique pointer in the ExprStmt class.

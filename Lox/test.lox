@@ -1,35 +1,12 @@
-// 1. Basic lambda stored in variable
-var square = fun(x) { return x * x; };
-print square(5);   // 25
+var x = "global";
 
-// 2. Immediately invoked
-print fun(a, b) { return a + b; }(3, 5);  // 8
-
-// 3. Passed as argument
-fun apply(fn, value) {
-    return fn(value);
-}
-print apply(fun(x) { return x * 2; }, 10);  // 20
-
-// 4. No parameters
-var greet = fun() { return "hello"; };
-print greet();  // hello
-
-// 5. Use Recursion to print 20 Fibonacci series numbers.
-fun fib(n) {
-  if (n <= 1) return n;
-  return fib(n - 2) + fib(n - 1);
+{
+    var x = "outer";  // [Warning] shadows global
+    {
+        var x = "inner";  // [Warning] shadows outer
+        print x;  // inner
+    }
+    print x;  // outer
 }
 
-for (var i = 0; i < 20; i = i + 1) {
-  print fib(i);
-}
-
-// 6. Returned from function, Segmentation fault. fix in chapter 11.
-fun makeAdder(n) {
-    return fun(x) { return x + n; };
-}
-
-var add5 = makeAdder(5);
-print add5(3);   // 8
-print add5(10);  // 15
+print x;  // global

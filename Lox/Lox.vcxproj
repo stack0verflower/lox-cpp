@@ -126,46 +126,48 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
+  <ItemGroup Label="Source Files/Lexer">
     <ClCompile Include="src/scanner/Lexer.cpp" />
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Label="Source Files/Core">
     <ClCompile Include="src/core/Lox.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src/Main.cpp" />
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Label="Header Files/Core">
     <ClInclude Include="include/core/Lox.h" />
     <ClInclude Include="include/core/Token.h" />
     <ClInclude Include="include/core/Common.h" />
     <ClInclude Include="include/core/Error.h" />
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Label="Header Files/Lexer">
     <ClInclude Include="include/scanner/Lexer.h" />
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Label="Header Files/Parser">
     <ClInclude Include="include/parser/Expr.h" />
     <ClInclude Include="include/parser/Parser.h" />
     <ClInclude Include="include/parser/ASTPrinter.h" />
     <ClInclude Include="include/parser/Stmt.h" />
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Label="Header Files/Interpreter">
     <ClInclude Include="include/interpreter/Interpreter.h" />
     <ClInclude Include="include/interpreter/Environment.h" />
     <ClInclude Include="include/interpreter/LoxCallable.h" />
     <ClInclude Include="include/interpreter/Return.h" />
+    <ClInclude Include="include/interpreter/Resolver.h" />
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Label="Source Files/Parser">
     <ClCompile Include="src/parser/Parser.cpp" />
     <ClCompile Include="src/parser/Expr.cpp" />
     <ClCompile Include="src/parser/ASTPrinter.cpp" />
     <ClCompile Include="src/parser/Stmt.cpp" />
   </ItemGroup>
-  <ItemGroup>
+  <ItemGroup Label="Source Files/Interpreter">
     <ClCompile Include="src/interpreter/Interpreter.cpp" />
     <ClCompile Include="src/interpreter/Environment.cpp" />
     <ClCompile Include="src/interpreter/LoxCallable.cpp" />
+    <ClCompile Include="src/interpreter/Resolver.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

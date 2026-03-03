@@ -80,14 +80,20 @@ public:
 	// General rule — always use explicit on single-argument constructors unless you specifically want implicit conversions. Which is almost never.
 	explicit Environment(std::shared_ptr<Environment> enclosing);
 	
-	void define(const std::string& name, const LiteralValue& value);
+	void define(const std::string& name, LiteralValue value);
+	void define(int index, const LiteralValue& value);
 	void assign(const Token& name, const LiteralValue& value);
 	LiteralValue get(const Token& name);
 	std::shared_ptr<Environment> enclosing = nullptr;  // for global scope
+	LiteralValue getAt(int distance, int index);
+	void assignAt(int distance, int index, LiteralValue value);
+
+	void push_slots(LiteralValue value);
 
 private:
 	
-	std::unordered_map<std::string, LiteralValue> values;
+	std::unordered_map<std::string, LiteralValue> values;	// for global lookup
+	std::vector<LiteralValue> slots;	// for local lookup, indexed by Resolver's "sticky notes"
 };
 
 #endif // !ENVIRONMENT_H

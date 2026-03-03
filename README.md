@@ -4,24 +4,97 @@ A C++ implementation of the Lox programming language from [*Crafting Interpreter
 
 ## 📚 About
 
-This project is my journey through *Crafting Interpreters*, translating the Java implementation (jlox) to modern C++. It's a learning project focused on understanding interpreter design, lexical analysis, parsing, and language implementation.
+This project is my journey through *Crafting Interpreters*, translating the Java implementation (jlox) to modern C++. It's a learning project focused on understanding interpreter design, lexical analysis, parsing, and language implementation — with several challenge extensions and improvements beyond the book.
 
-## 🚧 Current Status
+---
 
-**Completed:**
-- ✅ **Chapter 4: Scanning** — Lexical analysis and tokenization
-- ✅ **Chapter 5: Representing Code** — AST node definitions
-- ✅ **Chapter 6: Parsing Expressions** — Recursive descent parser with full expression support
-- ✅ **Chapter 7: Evaluating Expressions** — Tree-walk interpreter with runtime error handling
-- ✅ **Chapter 8: Statements and State** — Variables, assignment, block scoping, lexical environment chain
-- ✅ **Chapter 9: Control Flow** — `if`/`else`, `while`, `for` (desugared), logical `and`/`or` — Lox is now Turing complete
-- ✅ **Chapter 10: Functions** — first-class functions, closures, return statements, native functions (`clock()`), `LoxCallable` interface, `LoxFunction` runtime object
-- ✅ **Lambda Functions** *(Challenge Extension)* — anonymous function expressions, `LoxLambda` class, immediately invokable, passable as arguments
+## ✅ Implementation Progress
 
-**Coming Next:**
-- ⏳ Chapter 11: Resolving and Binding — fix closures with `shared_ptr` environments (fixes both `LoxFunction` and `LoxLambda`)
-- ⏳ Chapter 12: Classes
-- ⏳ Chapter 13: Inheritance
+### Chapter 4 — Scanning
+- Lexical analysis and tokenization
+- All Lox token types — single/double character tokens, literals, keywords
+- Line number tracking for error reporting
+- String and number literal parsing
+- Comment support (`//`)
+
+### Chapter 5 — Representing Code
+- AST node definitions for all expressions and statements
+- `AstPrinter` — Visitor pattern debug tool, prints AST as Lisp-style S-expressions
+- Example: `1 + 2 * 3` → `(+ 1.000000 (* 2.000000 3.000000))`
+
+### Chapter 6 — Parsing Expressions
+- Recursive descent parser for all Lox expressions
+- Correct operator precedence and associativity
+- Arithmetic, comparison, equality, unary, grouping, literals
+
+### Chapter 7 — Evaluating Expressions
+- Tree-walk interpreter with Visitor pattern
+- `stringify()` for clean output — trims trailing zeros, handles `bool` and `nil`
+- `isTruthy()` — only `false` and `nil` are falsy
+- Runtime error handling with line numbers
+
+### Chapter 8 — Statements and State
+- `print` statements and expression statements
+- Variable declaration (`var`) and assignment (`=`)
+- Block scoping with `{ }` — variables local to their block
+- Lexical environment chain — `Environment` class with `enclosing` pointer
+- `executeBlock()` with proper scope cleanup on exceptions
+
+### Chapter 9 — Control Flow
+- `if` / `else if` / `else`
+- `while` loops
+- `for` loops — desugared into `while` at parse time, no new AST node needed
+- Logical `and` / `or` with short-circuit evaluation
+- **Lox is now Turing complete**
+
+### Chapter 10 — Functions
+- `fun` keyword for function declarations
+- First-class functions — stored in variables, passed as arguments, returned
+- `LoxCallable` abstract base class — interface for all callables
+- `LoxFunction` runtime object — wraps `FuncStmt` with captured closure environment
+- `return` statements via `ReturnException` — cleanly unwinds arbitrarily deep call stacks
+- Arity checking before `call()` is invoked
+- Native functions — `clock()` injected at startup
+
+### Lambda Functions *(Challenge Extension — Chapter 10)*
+- Anonymous function expressions — `fun(x) { return x * x; }`
+- Parsed in `parsePrimary()` — lambda is an expression, produces a value
+- `LambdaExpr` AST node — params + body, no name
+- `LoxLambda` runtime class — inherits `LoxCallable`, identical mechanics to `LoxFunction`
+- Immediately invokable: `fun(a, b) { return a + b; }(3, 5)`
+- Storable, passable as arguments to higher-order functions
+
+### shared_ptr Environment Refactor
+- Replaced all raw `Environment*` with `shared_ptr<Environment>`
+- `executeBlock` no longer deletes — `shared_ptr` handles lifetime automatically
+- Fixes crash from `delete` on stack-allocated call environments
+
+### Chapter 11 — Resolving and Binding ![](https://img.shields.io/badge/-NEW-e74c3c?style=flat)
+- **Resolver** — static analysis pass that runs after parsing, before interpretation
+- Pre-computes exact scope depth for every variable reference — no runtime chain walking
+- Closure bug fixed — variables captured at **definition time**, not call time
+- `ResolverError` — compile-time errors caught before any code runs
+
+**Indexed Variable Resolution** *(Challenge Extension — Chapter 11)*
+- Each variable assigned a slot index at declaration time
+- Environment stores locals in a `vector` instead of `unordered_map`
+- Lookup is `getAt(depth, index)` — walk depth hops, then `values[index]` — pure O(1)
+- Globals still use name-based map lookup (correct by design)
+
+**Shadow Warnings & Redeclaration Errors** *(Beyond the book)*
+- `[Warning]` in yellow for variable shadowing — local shadows local, local shadows global
+- `[ResolverError]` for same-scope and global redeclaration — always a bug
+- `FunctionType` enum — tracks whether resolver is inside `NONE`, `FUNCTION`, or `LAMBDA`
+- Compile-time error for `return` outside any function or lambda
+
+---
+
+## 📋 Roadmap
+
+- ⏳ Chapter 12 — Classes
+- ⏳ Chapter 13 — Inheritance
+
+---
 
 ## 📁 Project Structure
 
@@ -44,6 +117,7 @@ Lox/
 │       ├── Environment.h
 │       ├── Interpreter.h
 │       ├── LoxCallable.h
+│       ├── Resolver.h
 │       └── Return.h
 ├── src/
 │   ├── core/
@@ -58,221 +132,174 @@ Lox/
 │   ├── interpreter/
 │   │   ├── Environment.cpp
 │   │   ├── Interpreter.cpp
-│   │   └── LoxCallable.cpp
+│   │   ├── LoxCallable.cpp
+│   │   └── Resolver.cpp
 │   └── Main.cpp
 ├── docs/
-│   ├── ARCHITECTURE_NOTES.md
-│   ├── ASSIGNMENT_PIPELINE.md
-│   ├── CRASH_PIPELINE.pdf
-│   ├── FILE_STRUCTURE.txt
-│   ├── FUNCTION_PIPELINE.md
-│   ├── GRAMMAR_NOTATION_REFERENCE.txt
-│   ├── INTERPRETER_PIPELINE.md
-│   ├── LAMBDA_PIPELINE.md
-│   ├── LOXCALLABLE_PIPELINE.md
-│   ├── PARSER_FUNCTIONS_EXPLAINED.txt
-│   ├── PARSE_TREE_EXAMPLES.txt
-│   ├── PARSE_TREE_PRACTICE_15_EXAMPLES.txt
-│   ├── RECURSIVE_PARSING.pdf
-│   ├── TURING_COMPLETENESS.md
-│   ├── VISITOR_PATTERN_COMPLETE_FLOW.md
-│   └── images/
-│       ├── repl_output.png
-│       └── test_output.png
 ├── test.lox
 └── Lox.vcxproj
 ```
 
-## 🎯 Features Implemented
+---
 
-### Lexer/Scanner (Chapter 4)
-- Tokenizes Lox source code into tokens
-- Recognizes all Lox token types — single/double character tokens, literals, keywords
-- Line number tracking for error reporting
-- String and number literal parsing
-- Comment support (`//`)
+## 🎯 Sample Programs
 
-### Parser (Chapter 5 & 6)
-- Recursive descent parser for all Lox expressions
-- Builds a proper **Abstract Syntax Tree (AST)**
-- Handles operator precedence and associativity correctly
-- Supports:
-  - Arithmetic: `+`, `-`, `*`, `/`
-  - Comparison: `<`, `<=`, `>`, `>=`, `==`, `!=`
-  - Unary: `-`, `!`
-  - Grouping: `(` ... `)`
-  - Literals: numbers, strings, `true`, `false`, `nil`
+### 1. Closures & Higher-Order Functions
+```lox
+fun makeAdder(x) {
+    return fun(y) { return x + y; };
+}
 
-### Interpreter (Chapter 7)
-- Tree-walk interpreter that evaluates AST nodes directly
-- Implements the **Visitor pattern** on the expression hierarchy
-- Supports full expression evaluation: arithmetic, comparison, equality, unary
-- `stringify()` for clean result output — trims trailing zeros from doubles, handles `bool` and `nil`
-- Runtime error handling with line number reporting
-- `isTruthy()` following Lox semantics — only `false` and `nil` are falsy
-- Fix for `bool`-in-variant implicit conversion to `double` (C++ quirk with `std::variant`)
+var add5  = makeAdder(5);
+var add10 = makeAdder(10);
 
-### AstPrinter (Chapter 5)
-- Implements the **Visitor pattern** on the AST
-- Traverses the expression tree and pretty-prints it as a **Lisp-style S-expression**
-- Used for debugging and verifying parser correctness
-- Example: `1 + 2 * 3` → `(+ 1.000000 (* 2.000000 3.000000))`
+print add5(3);         // 8
+print add10(3);        // 13
+print add5(add10(2));  // 17
+```
 
-### Lox Driver & REPL (Architectural Refactor)
-- `Lox.cpp` drives the full pipeline — REPL mode and file execution via `run()`
-- Separate error reporting for compiler errors (lexer/parser) vs runtime errors
-- Fixed ***circular dependency*** between `Lox.h` and `Interpreter.h`, `Parser.h`, `Lexer.h` via proper layering
-- `Common.h` and lower layers kept blind to high-level modules — inner layers don't know about outer ones
-- Added `core/Error.h` with a proper error hierarchy: `LoxError` → `LexError`, `ParseError`, `RuntimeError`
-- Moved includes from headers to implementation files — headers only include what they strictly need
-- Fixed string literal storage bug (trailing quote character)
+### 2. Closure Counter — Persistent State
+```lox
+fun makeCounter() {
+    var count = 0;
+    fun increment() {
+        count = count + 1;
+        return count;
+    }
+    return increment;
+}
 
-### Statements & State (Chapter 8)
-- `print` statements and expression statements
-- Variable declaration (`var`) and assignment (`=`)
-- Block scoping with `{ }` — variables are local to their block
-- **Lexical environment chain** — `Environment` class with `enclosing` pointer walks up scope chain for variable lookup and assignment
-- `executeBlock()` creates a new child `Environment`, executes statements, then restores the previous scope — with proper cleanup on exceptions via `try/catch/rethrow`
-- Raw pointer used intentionally for `enclosing` — non-owning observer, parent always outlives child
+var counter = makeCounter();
+print counter();  // 1
+print counter();  // 2
+print counter();  // 3
 
-### Control Flow (Chapter 9)
-- `if` / `else if` / `else` — `else if` falls out naturally from the grammar, no special case needed
-- `while` loops
-- `for` loops — **desugared** into `while` at parse time, no new AST node or interpreter logic needed
-- Logical `and` / `or` with **short-circuit evaluation** — `and` returns first falsy value, `or` returns first truthy value
-- Lox is now **Turing complete** — can compute anything computable
+var other = makeCounter();
+print other();    // 1  — fresh independent state
+print counter();  // 4  — original continues
+```
 
-### Functions (Chapter 10)
-- `fun` keyword for function declarations
-- First-class functions — stored in variables, passed as arguments, returned from functions
-- `LoxCallable` abstract base class — interface for everything callable (functions, native functions, future classes)
-- `LoxFunction` runtime object — wraps `FuncStmt` blueprint with a captured closure environment
-- `return` statements — implemented via `ReturnException` to cleanly unwind arbitrarily deep call stacks
-- Arity checking — argument count validated before `call()` is ever invoked
-- Native functions — `clock()` injected into global environment at interpreter startup
-- Function scope — each call creates a fresh `Environment` child of the closure
-- Known limitation: closures over local scopes segfault — fixed in Chapter 11 with `shared_ptr` environments
+### 3. Iterator Pattern — Closures as Objects
+```lox
+fun range(start, end) {
+    var current = start;
+    fun next() {
+        if (current >= end) return nil;
+        var val = current;
+        current = current + 1;
+        return val;
+    }
+    return next;
+}
 
-### Lambda Functions — Challenge Extension (Chapter 10)
-- Anonymous function expressions — `fun(x) { return x * x; }`
-- Parsed in `parsePrimary()` — lambda is an **expression**, produces a value
-- `LambdaExpr` AST node — params + body, no name
-- `LoxLambda` runtime class — inherits `LoxCallable`, identical call mechanics to `LoxFunction`
-- Immediately invokable: `fun(a, b) { return a + b; }(3, 5)`
-- Storable: `var square = fun(x) { return x * x; };`
-- Passable as argument to higher-order functions
-- Same closure limitation as `LoxFunction` — fixed together in Chapter 11
+var iter = range(0, 5);
+print iter();  // 0
+print iter();  // 1
+print iter();  // 2
+print iter();  // 3
+print iter();  // 4
+print iter();  // nil — exhausted
+```
 
-### shared_ptr Environment Refactor ![NEW](https://img.shields.io/badge/-NEW-e74c3c?style=flat)
-- Replaced all raw `Environment*` with `shared_ptr<Environment>`
-- `executeBlock` no longer deletes — callers manage nothing, `shared_ptr` handles lifetime
-- Fixes crash from `delete` on stack-allocated call environments
-- Prepares codebase for Chapter 11 full closure fix
+### 4. Fibonacci — Recursion
+```lox
+fun fib(n) {
+    if (n <= 1) return n;
+    return fib(n - 1) + fib(n - 2);
+}
 
-## 🖥️ REPL in Action
+for (var i = 0; i < 10; i = i + 1) {
+    print fib(i);
+}
+// 0 1 1 2 3 5 8 13 21 34
+```
 
-![REPL Output](Lox/docs/images/repl_output.png)
+### 5. Scope & Shadow Warnings
+```lox
+var x = "global";
+
+{
+    var x = "outer";  // [Warning] shadows global
+    {
+        var x = "inner";  // [Warning] shadows outer
+        print x;  // inner
+    }
+    print x;  // outer
+}
+
+print x;  // global
+```
+
+![Error System](Lox/docs/images/test_output.png)
+
+### 6. Error System
+```lox
+// Compile-time — return outside function
+return "bad";
+// [ResolverError]: Cannot return from top-level code.
+
+// Compile-time — self-initialization
+var a = a;
+// [ResolverError]: Can't read local variable in its own initializer.
+
+// Compile-time — same scope redeclaration
+{ var b = 1; var b = 2; }
+// [ResolverError]: Variable 'b' already declared in this scope.
+
+// Runtime — undefined variable
+print undeclared;
+// [RuntimeError]: Undefined variable 'undeclared'.
+```
+
+![Error System](Lox/docs/images/test_output_errors.png)
+
+---
 
 ## 🔧 Building & Running
 
 ### Prerequisites
-- Visual Studio 2019 or later (with C++20 support)
+- Visual Studio 2019 or later (C++20)
 - Or any C++20 compatible compiler (GCC, Clang)
 
 ### Build in Visual Studio
-1. Open `Lox.vcxproj` in Visual Studio
-2. Select your configuration — **Debug** or **Release**
-3. Build the solution: `Ctrl+Shift+B` or **Build → Build Solution**
-4. The executable is output to `x64/Debug/Lox.exe` (or `x64/Release/Lox.exe`)
+1. Open `Lox.vcxproj`
+2. Select **Debug** or **Release**
+3. `Ctrl+Shift+B` → output at `x64/Debug/Lox.exe`
 
-### Running a `.lox` file
-After building, open a terminal at the root of the repo and run:
-
+### Run a `.lox` file
 ```bash
-# From the repo root
 ./x64/Debug/Lox.exe test.lox
-
-# Or with a path to any .lox file
-./x64/Debug/Lox.exe path/to/your/file.lox
 ```
 
 ### REPL mode
-Run without arguments to enter the interactive REPL:
-
 ```bash
 ./x64/Debug/Lox.exe
 ```
 
-### Comprehensive Example
-```lox
-// 1. Basic lambda stored in variable
-var square = fun(x) { return x * x; };
-print square(5);   // 25
+---
 
-// 2. Immediately invoked
-print fun(a, b) { return a + b; }(3, 5);  // 8
+## 📖 Key C++ Lessons Learned
 
-// 3. Passed as argument
-fun apply(fn, value) {
-    return fn(value);
-}
-print apply(fun(x) { return x * 2; }, 10);  // 20
-
-// 4. No parameters
-var greet = fun() { return "hello"; };
-print greet();  // hello
-
-// 5. Use Recursion to print 20 Fibonacci series numbers.
-fun fib(n) {
-  if (n <= 1) return n;
-  return fib(n - 2) + fib(n - 1);
-}
-
-for (var i = 0; i < 20; i = i + 1) {
-  print fib(i);
-}
-
-// 6. Returned from function, Segmentation fault. fix in chapter 11.
-fun makeAdder(n) {
-    return fun(x) { return x + n; };
-}
-
-var add5 = makeAdder(5);
-print add5(3);   // 8
-print add5(10);  // 15
-```
-
-### Output
-
-![Test Output](Lox/docs/images/test_output.png)
-
-
-## 📖 Learning Notes
-
-### Java → C++ Translation Challenges
-- `std::variant` for the `Literal` type (requires C++17+)
-- Manual memory management vs Java's garbage collection
-- Visitor pattern implementation differs significantly
-- Proper use of `std::string` and `std::unique_ptr` for AST nodes — since each node has exactly one parent/owner, `unique_ptr` is the right fit over `shared_ptr`
-- `std::variant` with both `bool` and `double` causes implicit conversion issues — C++ prefers converting `bool` to `double`, so comparison results must be explicitly wrapped as `LiteralValue(bool)` to force correct type storage
-- **Circular dependency** is a real C++ problem — solved by enforcing strict layer isolation and avoiding high-level includes in low-level headers
-- **Header discipline** — only include in headers what is needed for the type declarations; move everything else to the `.cpp` file. Critical at scale
-- **Uninitialized pointers** are a classic C++ footgun — a raw `Environment*` member with no initializer points at garbage memory and causes an instant segfault on first use. Always initialize pointers, either inline (`= nullptr`) or in the constructor initializer list
-- **For loop desugaring** — `for` is not a new interpreter concept, just the parser assembling `while` + `BlockStmt` nodes. The interpreter never knows a `for` loop existed
-- **`std::move` is non-negotiable with `unique_ptr`** — passing a `unique_ptr` without `std::move` is a compile error (copy constructor is deleted by design)
-- **Exceptions as control flow** — `ReturnException` is not an error, it's an intentional use of C++ exception machinery to unwind the call stack cleanly from any depth back to `LoxFunction::call()`
-- **`shared_ptr` for callables** — functions need shared ownership since multiple variables can reference the same function object. `unique_ptr` would break `var f = someFunction; var g = f;`
-- **Forward declaration breaks circular dependencies** — `LoxCallable.h` forward declares `Interpreter` so headers don't include each other. Full `#include` goes in `.cpp` files only
-
-## 🙏 Acknowledgments
-
-- [Bob Nystrom](https://github.com/munificent) for the excellent [*Crafting Interpreters*](https://craftinginterpreters.com/) book
-- The original Java implementation (jlox) as reference
-
-## 📝 License
-
-This is a learning project based on *Crafting Interpreters*. The original book and its code are by Bob Nystrom.
+| Challenge | Solution |
+|---|---|
+| Java's `Object` type | `std::variant<double, bool, string, nullptr_t, shared_ptr<LoxCallable>>` |
+| Garbage collection | `shared_ptr` for shared ownership, `unique_ptr` for AST nodes |
+| Circular dependencies | Forward declarations in headers, full includes in `.cpp` only |
+| `bool` in variant | Must explicitly wrap as `LiteralValue(bool)` — C++ prefers `bool → double` |
+| `unique_ptr` in collections | `std::move` non-negotiable — copy constructor deleted by design |
+| Return across call stack | `ReturnException` — intentional exceptions as control flow |
+| Closure lifetime | `shared_ptr<Environment>` — env stays alive as long as any closure references it |
+| Stack vs heap allocation | Function call env was stack-allocated, `delete` crashed — `shared_ptr` fixes this |
+| Pointer as map key | Raw `const Expr*` — non-owning, address uniquely identifies AST node |
+| Uninitialized pointers | Always initialize — raw pointer with no init points at garbage, instant segfault |
 
 ---
 
-⭐ Star this repo if you're also learning from *Crafting Interpreters*!
+## 🙏 Acknowledgments
+
+- [Bob Nystrom](https://github.com/munificent) for [*Crafting Interpreters*](https://craftinginterpreters.com/)
+- Original Java implementation (jlox) as reference
+
+---
+
+⭐ Star if you're also learning from *Crafting Interpreters*!
