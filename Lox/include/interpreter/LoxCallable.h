@@ -13,6 +13,7 @@
 class Interpreter;
 class LoxCallable;
 class LoxLambda;
+class LoxClass;
 
 class LoxCallable {
 public:
@@ -24,14 +25,16 @@ public:
 
 class LoxFunction : public LoxCallable {
 public:
-    LoxFunction(const FuncStmt& declaration, std::shared_ptr<Environment> closure);
+    LoxFunction(const FuncStmt& declaration, std::shared_ptr<Environment> closure, bool isInitializer);
     LiteralValue call(Interpreter& interpreter, std::vector<LiteralValue> arguments) override;
+	std::shared_ptr<LoxFunction> bind(std::shared_ptr<LoxInstance> instance);
     int arity() override;
     std::string toString() override;
 
 private:
     const FuncStmt& declaration;
     std::shared_ptr<Environment> closure;
+    bool isInitializer;
 };
 
 class LoxLambda : public LoxCallable {
@@ -44,6 +47,20 @@ public:
 private:
     const LambdaExpr& declaration;
     std::shared_ptr<Environment> closure;
+};
+
+class LoxClass : public LoxCallable {
+public:
+    LoxClass(const std::string& name, std::unordered_map<std::string, std::shared_ptr<LoxFunction>> methods);
+    LiteralValue call(Interpreter& interpreter, std::vector<LiteralValue> arguments) override;
+    int arity() override;
+	std::string toString() override;
+
+    std::shared_ptr<LoxFunction> findMethod(const std::string& name);
+
+private:
+	std::string name;
+    std::unordered_map<std::string, std::shared_ptr<LoxFunction>> methods;
 };
 
 #endif // !LOXCALLABLE_H

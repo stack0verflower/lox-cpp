@@ -151,7 +151,14 @@ void Resolver::visitReturnStmt(const ReturnStmt& stmt) {
 	if (currentFunction == FunctionType::NONE) {
 		throw ResolverError(stmt.keyword, "Cannot return from top-level code.");
 	}
-	if (stmt.value) resolve(*stmt.value);
+
+	if (stmt.value) {
+		if (currentFunction == FunctionType::INITIALIZER) {
+			throw ResolverError(stmt.keyword, "Can't return a value from an initializer.");
+		}
+
+		resolve(*stmt.value);
+	}
 }
 
 void Resolver::visitWhileStmt(const WhileStmt& stmt) {
@@ -159,6 +166,31 @@ void Resolver::visitWhileStmt(const WhileStmt& stmt) {
 	resolve(*stmt.condition);
 	// Resolve body next, so that any variable declarations in the body are resolved to the body scope.
 	resolve(*stmt.body);
+}
+
+void Resolver::visitClassStmt(const ClassStmt& stmt) {
+	ClassType enclosingClass = currentClass;
+	currentClass = ClassType::CLASS;
+
+	declare(stmt.name);
+	define(stmt.name);
+
+	beginScope();
+	scopes.back()["this"] = 0;  // 'this' is always at index
+
+	for (auto& method : stmt.methods) {
+		FunctionType declaration = FunctionType::METHOD;
+
+		if (method->name.lexeme == "init") {
+			declaration = FunctionType::INITIALIZER;
+		}
+
+		resolveFunction(method->params, method->body, declaration);
+	}
+
+	endScope();
+
+	currentClass = enclosingClass;
 }
 
 
@@ -229,5 +261,29 @@ LiteralValue Resolver::visitUnaryExpr(const Unary& expr) {
 LiteralValue Resolver::visitLambdaExpr(const LambdaExpr& expr) {
 	// Lambda expressions are like anonymous functions. They introduce a new scope for their body, and they can have parameters that need to be resolved to that scope. So we create a new scope for the lambda body, declare and define the parameters in that scope, and then resolve the body in that scope.
 	resolveFunction(expr.params, expr.body, FunctionType::LAMBDA);
+	return nullptr;
+}
+
+LiteralValue Resolver::visitGetExpr(const GetExpr& expr) {
+	/*
+	"Yeah, that is what I say, Bacon is global scope, and a LiteralValue list returns a pointer to Bacon class itself. 
+	Automatically you get eat, fields everything, hence we do not need to resolve .eat and all."
+	*/
+	resolve(*expr.object);
+	return nullptr;
+}
+
+LiteralValue Resolver::visitSetExpr(const SetExpr& expr) {
+	resolve(*expr.value);
+	resolve(*expr.object);
+	return nullptr;
+}
+
+LiteralValue Resolver::visitThisExpr(const ThisExpr& expr) {
+	if (currentClass == ClassType::NONE) {
+		throw ResolverError(expr.keyword, "Can't use 'this' outside of a class.");
+	}
+
+	resolveLocal(expr, expr.keyword);
 	return nullptr;
 }

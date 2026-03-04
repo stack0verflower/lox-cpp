@@ -19,6 +19,9 @@ class Unary;
 class VariableExpr;
 class CallExpr;
 class LambdaExpr;
+class GetExpr;
+class SetExpr;
+class ThisExpr;
 
 class ExprVisitor {
 public:
@@ -34,6 +37,9 @@ public:
 	virtual LiteralValue visitVariableExpr(const VariableExpr& expr) = 0;
 	virtual LiteralValue visitCallExpr(const CallExpr& expr) = 0;
 	virtual LiteralValue visitLambdaExpr(const LambdaExpr& expr) = 0;
+	virtual LiteralValue visitGetExpr(const GetExpr& expr) = 0;
+	virtual LiteralValue visitSetExpr(const SetExpr& expr) = 0;
+	virtual LiteralValue visitThisExpr(const ThisExpr& expr) = 0;
 };
 
 class Expr {
@@ -161,6 +167,33 @@ public:
 	std::vector<std::unique_ptr<Stmt>> body;
 
 	LambdaExpr(std::vector<Token> params, std::vector<std::unique_ptr<Stmt>> body);
+	LiteralValue accept(ExprVisitor* visitor) const override;
+};
+
+class GetExpr : public Expr {
+public:
+	std::unique_ptr<Expr> object;
+	Token name;
+
+	GetExpr(std::unique_ptr<Expr> object, Token name);
+	LiteralValue accept(ExprVisitor* visitor) const override;
+};
+
+class SetExpr : public Expr {
+public:
+	std::unique_ptr<Expr> object;
+	Token name;
+	std::unique_ptr<Expr> value;
+
+	SetExpr(std::unique_ptr<Expr> object, Token name, std::unique_ptr<Expr> value);
+	LiteralValue accept(ExprVisitor* visitor) const override;
+};
+
+class ThisExpr : public Expr {
+public: 
+	Token keyword;
+
+	ThisExpr(Token keyword);
 	LiteralValue accept(ExprVisitor* visitor) const override;
 };
 

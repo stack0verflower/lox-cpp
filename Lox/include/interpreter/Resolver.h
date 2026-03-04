@@ -14,6 +14,13 @@ enum class FunctionType {
 	NONE,
 	FUNCTION,
 	LAMBDA,
+	METHOD,
+	INITIALIZER,
+};
+
+enum class ClassType {
+	NONE,
+	CLASS,
 };
 
 class Resolver : public ExprVisitor, public StmtVisitor {
@@ -33,6 +40,7 @@ private:
 	void resolveFunction(const std::vector<Token>& params, const std::vector<std::unique_ptr<Stmt>>& body, FunctionType type);
 
 	FunctionType currentFunction = FunctionType::NONE;
+	ClassType currentClass = ClassType::NONE;
 
 public:
 	Resolver(Interpreter& interpreter) : interpreter(interpreter) {}
@@ -46,6 +54,7 @@ public:
 	void visitPrintStmt(const PrintStmt& stmt) override;
 	void visitReturnStmt(const ReturnStmt& stmt) override;
 	void visitWhileStmt(const WhileStmt& stmt) override;
+	void visitClassStmt(const ClassStmt& stmt) override;
 
 	// ExprVisitor overrides
 	LiteralValue visitVariableExpr(const VariableExpr& expr) override;
@@ -57,6 +66,9 @@ public:
 	LiteralValue visitLogicalExpr(const Logical& expr) override;
 	LiteralValue visitUnaryExpr(const Unary& expr) override;
 	LiteralValue visitLambdaExpr(const LambdaExpr& expr) override;
+	LiteralValue visitGetExpr(const GetExpr& expr) override;
+	LiteralValue visitSetExpr(const SetExpr& expr) override;
+	LiteralValue visitThisExpr(const ThisExpr& expr) override;
 
 	void resolve(const std::vector<std::unique_ptr<Stmt>>& statements);
 	const std::vector<ResolverWarning> getWarnings() const { return warnings; }

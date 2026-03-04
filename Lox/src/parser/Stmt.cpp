@@ -54,3 +54,9 @@ ReturnStmt::ReturnStmt(Token keyword, std::unique_ptr<Expr> value) : keyword(key
 void ReturnStmt::accept(StmtVisitor* visitor) const {
 	visitor->visitReturnStmt(*this);
 }
+
+ClassStmt::ClassStmt(Token name, std::vector<std::unique_ptr<FuncStmt>> methods) : name(name), methods(std::move(methods)) {}
+
+void ClassStmt::accept(StmtVisitor* visitor) const {
+	visitor->visitClassStmt(*this);
+}

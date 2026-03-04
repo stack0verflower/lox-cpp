@@ -1,7 +1,8 @@
 ﻿/*
 program        → statement* EOF ;
 
-declaration    → funDecl 
+declaration    → classDecl
+			   | funDecl 
 			   | varDecl
 			   | statement ;
 
@@ -36,6 +37,8 @@ function       → IDENTIFIER "(" parameters? ")" block ;
 parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
 
 returnStmt     → "return" expression? ";" ;
+
+classDecl      → "class" IDENTIFIER "{" function* "}" ;
 */
 
 /*
@@ -60,6 +63,7 @@ class BlockStmt;
 class WhileStmt;
 class FuncStmt;
 class ReturnStmt;
+class ClassStmt;
 
 class StmtVisitor {
 public:
@@ -77,6 +81,8 @@ public:
 	
 	virtual void visitFuncStmt(const FuncStmt& stmt) = 0;
 	virtual void visitReturnStmt(const ReturnStmt& stmt) = 0;
+
+	virtual void visitClassStmt(const ClassStmt& stmt) = 0;
 };
 
 class Stmt {
@@ -170,6 +176,15 @@ public:
 	std::unique_ptr<Expr> value;
 
 	explicit ReturnStmt(Token keyword, std::unique_ptr<Expr> value);
+	void accept(StmtVisitor* visitor) const override;
+};
+
+class ClassStmt : public Stmt {
+public:
+	Token name;
+	std::vector<std::unique_ptr<FuncStmt>> methods;
+
+	explicit ClassStmt(Token name, std::vector<std::unique_ptr<FuncStmt>> methods);
 	void accept(StmtVisitor* visitor) const override;
 };
 

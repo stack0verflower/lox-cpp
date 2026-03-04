@@ -57,3 +57,21 @@ LambdaExpr::LambdaExpr(std::vector<Token> params, std::vector<std::unique_ptr<St
 LiteralValue LambdaExpr::accept(ExprVisitor* visitor) const {
 	return visitor->visitLambdaExpr(*this);
 }
+
+GetExpr::GetExpr(std::unique_ptr<Expr> object, Token name) : object(std::move(object)), name(name) {}
+
+LiteralValue GetExpr::accept(ExprVisitor* visitor) const {
+	return visitor->visitGetExpr(*this);
+}
+
+SetExpr::SetExpr(std::unique_ptr<Expr> object, Token name, std::unique_ptr<Expr> value) : object(std::move(object)), name(name), value(std::move(value)) {}
+
+LiteralValue SetExpr::accept(ExprVisitor* visitor) const {
+	return visitor->visitSetExpr(*this);
+}
+
+ThisExpr::ThisExpr(Token keyword) : keyword(keyword) {}
+
+LiteralValue ThisExpr::accept(ExprVisitor* visitor) const {
+	return visitor->visitThisExpr(*this);
+}

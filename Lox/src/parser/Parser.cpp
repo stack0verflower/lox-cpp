@@ -104,6 +104,7 @@ bool Parser::check(TokenType type) const {
 // ================================================================================================================================================
     
 std::unique_ptr<Stmt> Parser::declaration() {
+    if (match({ TokenType::CLASS })) return classDeclaration();
     if (match({ TokenType::FUN })) return funcDeclaration("function");
     if (match({ TokenType::VAR })) return varDeclaration();
 
@@ -122,6 +123,22 @@ std::unique_ptr<Stmt> Parser::statement() {
     // BlockSmt constructor requires a vector of unique_ptr of statements.
 	if (match({ TokenType::LEFT_BRACE })) return std::make_unique<BlockStmt>(blockStatement());
     return expressionStatement();
+}
+
+std::unique_ptr<Stmt> Parser::classDeclaration() {
+	Token name = consume(TokenType::IDENTIFIER, "Expect class name.");
+	consume(TokenType::LEFT_BRACE, "Expect '{' before class body.");
+
+	std::vector<std::unique_ptr<FuncStmt>> methods;
+
+	// Add the methods. The methods here, do not need a 'fun` keyword, as they are already being parsed under class declaration
+    while (!check(TokenType::RIGHT_BRACE) && !isAtEnd()) {
+        // funcDeclaration() always returns a FuncStmt, so static_cast is safe here.
+        methods.push_back(std::unique_ptr<FuncStmt>(static_cast<FuncStmt*>(funcDeclaration("method").release())));
+	}
+
+	consume(TokenType::RIGHT_BRACE, "Expect '}' after class body.");
+	return std::make_unique<ClassStmt>(name, std::move(methods));
 }
 
 // Will reuse this in Class's method. Hence `kind`.
@@ -361,7 +378,12 @@ std::unique_ptr<Expr> Parser::parseAssignment() {
             Token name = var->name;
             std::unique_ptr<Expr> value = parseAssignment();
             return std::make_unique<Assign>(name, std::move(value));
-        }
+        } else if(auto* get = dynamic_cast<GetExpr*>(expr.get())) {
+            // This is for setting a property of an object. Say, obj.prop = value; => We have GetExpr(obj, "prop") as left hand side of assignment, and value as right hand side. So, we check if left hand side is a GetExpr, if yes, then we create a SetExpr with object as get->object, name as get->name, and value as the right hand side of assignment.
+            Token name = get->name;
+            std::unique_ptr<Expr> value = parseAssignment();
+            return std::make_unique<SetExpr>(std::move(get->object), name, std::move(value));
+		}
 
         throw ParseError(previous(), "Invalid assignment target.");
     }
@@ -479,6 +501,10 @@ std::unique_ptr<Expr> Parser::parseCall() {
         if (match({ TokenType::LEFT_PAREN })) {
             // Look, this expr is being modified every loop into that nested function. So, for fun(1)(2), we have the function CallExpr(fun, [1]) as callee for argument 2, look at wrapping.
             expr = std::move(finishCall(std::move(expr)));
+        } else if (match({ TokenType::DOT })) {
+			// This is for methods. Say, obj.method1().method2() => We have method1() as callee for method2(), and obj as callee for method1(). So, we loop till we encounter a non DOT token, which is not a method call.
+            Token name = consume(TokenType::IDENTIFIER, "Expect property name after '.'.");
+			expr = std::make_unique<GetExpr>(std::move(expr), name);
         } else {
             break;
         }
@@ -515,6 +541,10 @@ std::unique_ptr<Expr> Parser::parsePrimary() {
 
     if (match({ TokenType::NUMBER, TokenType::STRING })) {
         return std::make_unique<Literal>(previous().literal);
+    }
+
+    if (match({ TokenType::THIS })) {
+		return std::make_unique<VariableExpr>(previous());
     }
 
 	// If the token in the current position is an identifier, we will create a VariableExpr for it, and return it.

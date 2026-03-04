@@ -69,7 +69,7 @@ This project is my journey through *Crafting Interpreters*, translating the Java
 - `executeBlock` no longer deletes — `shared_ptr` handles lifetime automatically
 - Fixes crash from `delete` on stack-allocated call environments
 
-### Chapter 11 — Resolving and Binding ![](https://img.shields.io/badge/-NEW-e74c3c?style=flat)
+### Chapter 11 — Resolving and Binding
 - **Resolver** — static analysis pass that runs after parsing, before interpretation
 - Pre-computes exact scope depth for every variable reference — no runtime chain walking
 - Closure bug fixed — variables captured at **definition time**, not call time
@@ -87,11 +87,26 @@ This project is my journey through *Crafting Interpreters*, translating the Java
 - `FunctionType` enum — tracks whether resolver is inside `NONE`, `FUNCTION`, or `LAMBDA`
 - Compile-time error for `return` outside any function or lambda
 
+### Chapter 12 — Classes ![](https://img.shields.io/badge/-NEW-e74c3c?style=flat)
+- `class` keyword for class declarations
+- Instantiation via call syntax — `ClassName()`
+- Fields — get and set properties on instances (`instance.field`, `instance.field = value`)
+- Methods — defined inside class body, shared across all instances
+- `this` — refers to the current instance inside a method
+- **Bound methods** — when a method is accessed via get, it is wrapped with `this` pre-bound to the instance (Python-style bound methods)
+- Fields shadow methods — if a field and method share a name, field takes priority
+- Functions stored in fields are callable like methods, but `this` is not bound
+- `GetExpr` — property access (`instance.field`)
+- `SetExpr` — property assignment (`instance.field = value`)
+- `ThisExpr` — resolved statically by Resolver at depth 1 (class scope), bound at runtime via `bind()`
+- `LoxClass` — runtime class object, holds method map
+- `LoxInstance` — runtime instance object, holds fields map, inherits `enable_shared_from_this`
+- `bind()` — creates a new closure environment with `this = instance` at slot 0, returns a new `LoxFunction`
+
 ---
 
 ## 📋 Roadmap
 
-- ⏳ Chapter 12 — Classes
 - ⏳ Chapter 13 — Inheritance
 
 ---
@@ -117,6 +132,7 @@ Lox/
 │       ├── Environment.h
 │       ├── Interpreter.h
 │       ├── LoxCallable.h
+│       ├── LoxInstance.h
 │       ├── Resolver.h
 │       └── Return.h
 ├── src/
@@ -133,9 +149,32 @@ Lox/
 │   │   ├── Environment.cpp
 │   │   ├── Interpreter.cpp
 │   │   ├── LoxCallable.cpp
+│   │   ├── LoxInstance.cpp
 │   │   └── Resolver.cpp
 │   └── Main.cpp
 ├── docs/
+│   ├── ARCHITECTURE_NOTES.md
+│   ├── ASSIGNMENT_PIPELINE.md
+│   ├── CLASS_METHODS_PIPELINE.html
+│   ├── FILE_STRUCTURE.txt
+│   ├── FUNCTION_PIPELINE.md
+│   ├── GRAMMAR_NOTATION_REFERENCE.txt
+│   ├── INDEXED_RESOLVER.pdf
+│   ├── INTERPRETER_PIPELINE.md
+│   ├── LOXCALLABLE_PIPELINE.md
+│   ├── LOX_PIPELINE.html
+│   ├── PARSER_FUNCTIONS_EXPLAINED.txt
+│   ├── PARSE_TREE_EXAMPLES.txt
+│   ├── PARSE_TREE_PRACTICE_15_EXAMPLES.txt
+│   ├── RESOLVER_PIPELINE.pdf
+│   ├── TURING_COMPLETENESS.md
+│   ├── VISITOR_PATTERN_COMPLETE_FLOW.md
+│   ├── Resolver/
+│   │   └── LAYMEN.html
+│   └── images/
+│       ├── repl_output.png
+│       ├── test_output.png
+│       └── test_output_errors.png
 ├── test.lox
 └── Lox.vcxproj
 ```
@@ -230,7 +269,7 @@ var x = "global";
 print x;  // global
 ```
 
-![Error System](Lox/docs/images/test_output.png)
+![Shadow Warnings](Lox/docs/images/test_output.png)
 
 ### 6. Error System
 ```lox
@@ -252,6 +291,34 @@ print undeclared;
 ```
 
 ![Error System](Lox/docs/images/test_output_errors.png)
+
+### 7. Classes — Bound Methods & this
+```lox
+class Counter {
+    init() { this.count = 0; }
+    increment() { this.count = this.count + 1; }
+    value() { return this.count; }
+}
+
+var c = Counter();
+c.init();
+c.increment();
+c.increment();
+print c.value();  // 2
+```
+
+### 8. Classes — Chained Method Calls
+```lox
+class Builder {
+    init() { this.result = ""; }
+    add(s) { this.result = this.result + s; return this; }
+    build() { return this.result; }
+}
+
+var b = Builder();
+b.init();
+print b.add("Hello").add(" ").add("World").build();  // Hello World
+```
 
 ---
 
@@ -292,6 +359,8 @@ print undeclared;
 | Stack vs heap allocation | Function call env was stack-allocated, `delete` crashed — `shared_ptr` fixes this |
 | Pointer as map key | Raw `const Expr*` — non-owning, address uniquely identifies AST node |
 | Uninitialized pointers | Always initialize — raw pointer with no init points at garbage, instant segfault |
+| `this` binding | `shared_from_this()` — can't use raw `this` to create a `shared_ptr`, would double-free |
+| Method vs field lookup | Fields shadow methods — instance map checked first, class method map second |
 
 ---
 
@@ -301,4 +370,3 @@ print undeclared;
 - Original Java implementation (jlox) as reference
 
 ---
-

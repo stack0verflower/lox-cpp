@@ -1,12 +1,8 @@
-var x = "global";
-
-{
-    var x = "outer";  // [Warning] shadows global
-    {
-        var x = "inner";  // [Warning] shadows outer
-        print x;  // inner
-    }
-    print x;  // outer
+// Method stored as callback
+class Dog {
+  init(name) { this.name = name; }
+  bark() { print this.name + " says woof!"; }
 }
-
-print x;  // global
+var d = Dog("Rex");
+var cb = d.bark;
+cb();  // still prints "Rex says woof!"

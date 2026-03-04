@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resolver & Environment Visual</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', sans-serif; padding: 20px; min-height: 100vh; }
+h2 { color: #58a6ff; text-align: center; margin-bottom: 4px; font-size: 1.3rem; }
+.subtitle { color: #8b949e; text-align: center; font-size: .8rem; margin-bottom: 20px; }
+
+/* Nav */
+.nav { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
+.nav-btn { padding: 7px 18px; border-radius: 20px; border: none; cursor: pointer; font-size: .82rem; background: #21262d; color: #8b949e; transition: all .2s; }
+.nav-btn.active { background: #58a6ff; color: #0d1117; font-weight: bold; color: #0d1117; }
+
+/* Step nav */
+.step-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px; }
+.step-btn { padding: 6px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: .82rem; background: #21262d; color: #e6edf3; }
+.step-btn:disabled { opacity: .3; cursor: default; }
+.step-btn:not(:disabled):hover { background: #30363d; }
+.step-counter { color: #8b949e; font-size: .82rem; min-width: 80px; text-align: center; }
+
+/* Panel */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* Code */
+pre { font-family: monospace; font-size: .82rem; line-height: 1.7; }
+.code-box { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px; margin-bottom: 14px; }
+.hl { background: #2d2500; border-radius: 3px; padding: 0 3px; }
+.hl-blue { color: #58a6ff; }
+.hl-green { color: #3fb950; }
+.hl-orange { color: #ffa657; }
+.hl-purple { color: #bc8cff; }
+.hl-red { color: #f85149; }
+.hl-yellow { color: #e3b341; }
+
+/* Step description */
+.step-desc { background: #161b22; border-left: 3px solid #58a6ff; border-radius: 0 8px 8px 0; padding: 14px; margin-bottom: 16px; font-size: .85rem; line-height: 1.7; color: #e6edf3; }
+.step-desc .what { color: #ffa657; font-weight: bold; margin-bottom: 6px; font-size: .9rem; }
+
+/* Notebook */
+.notebook-wrap { margin-bottom: 16px; }
+.notebook-label { color: #8b949e; font-size: .75rem; margin-bottom: 6px; }
+.notebook { display: flex; flex-direction: column; gap: 6px; }
+.nb-page { border-radius: 8px; padding: 10px 14px; border: 1px solid #30363d; background: #161b22; }
+.nb-page.active-page { border-color: #58a6ff; background: #0d1f2d; }
+.nb-page-title { font-size: .72rem; color: #8b949e; margin-bottom: 6px; display: flex; justify-content: space-between; }
+.nb-page-title span { color: #58a6ff; font-weight: bold; }
+.nb-row { display: flex; gap: 8px; align-items: center; font-family: monospace; font-size: .78rem; margin-bottom: 3px; }
+.nb-name { color: #79c0ff; min-width: 60px; }
+.nb-slot { background: #21262d; border-radius: 4px; padding: 1px 7px; color: #ffa657; }
+.nb-state { color: #8b949e; font-size: .7rem; }
+.nb-empty { color: #30363d; font-size: .75rem; font-style: italic; }
+.nb-arrow { text-align: center; color: #30363d; font-size: .9rem; padding: 2px 0; }
+
+/* Sticky notes */
+.sticky-wrap { margin-bottom: 16px; }
+.sticky-label { color: #8b949e; font-size: .75rem; margin-bottom: 6px; }
+.stickies { display: flex; gap: 8px; flex-wrap: wrap; }
+.sticky { background: #2d2500; border: 1px solid #e3b341; border-radius: 6px; padding: 8px 12px; font-size: .75rem; font-family: monospace; }
+.sticky .s-expr { color: #e3b341; margin-bottom: 3px; }
+.sticky .s-val { color: #8b949e; }
+.sticky-none { color: #30363d; font-size: .75rem; font-style: italic; }
+
+/* Environment chain */
+.env-wrap { margin-bottom: 16px; }
+.env-label { color: #8b949e; font-size: .75rem; margin-bottom: 6px; }
+.env-chain { display: flex; align-items: flex-start; gap: 0; flex-wrap: wrap; }
+.env-box { border-radius: 8px; padding: 10px 14px; min-width: 150px; border: 1px solid #30363d; background: #161b22; }
+.env-box-title { font-size: .72rem; font-weight: bold; margin-bottom: 6px; }
+.env-slot-row { display: flex; gap: 6px; align-items: center; font-family: monospace; font-size: .75rem; margin-bottom: 3px; }
+.slot-idx { background: #21262d; border-radius: 3px; padding: 1px 6px; color: #8b949e; font-size: .7rem; min-width: 22px; text-align: center; }
+.slot-val { color: #3fb950; }
+.env-arrow { color: #ffa657; font-size: 1.3rem; padding: 20px 6px 0; }
+.env-empty { color: #30363d; font-size: .75rem; font-style: italic; }
+.env-name-map { margin-top: 6px; padding-top: 6px; border-top: 1px dashed #21262d; }
+.env-name-row { font-family: monospace; font-size: .75rem; margin-bottom: 2px; }
+.env-name-k { color: #79c0ff; }
+.env-name-v { color: #3fb950; }
+
+/* Global vars */
+.gv-wrap { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.gv-chip { background: #1a2d1a; border: 1px solid #3fb950; border-radius: 12px; padding: 3px 12px; font-size: .75rem; font-family: monospace; color: #3fb950; }
+.gv-label { color: #8b949e; font-size: .75rem; margin-bottom: 6px; }
+
+/* Layout */
+.two-col { display: flex; gap: 16px; flex-wrap: wrap; }
+.col { flex: 1 1 280px; }
+
+.tag { display: inline-block; font-size: .68rem; padding: 1px 7px; border-radius: 8px; margin-left: 6px; vertical-align: middle; }
+.tag-resolver { background: #1a2332; color: #58a6ff; border: 1px solid #58a6ff; }
+.tag-runtime { background: #1a2d1a; color: #3fb950; border: 1px solid #3fb950; }
+</style>
+</head>
+<body>
+
+<h2>Resolver & Environment — Visual Deep Dive</h2>
+<p class="subtitle">Step through exactly what happens, when, and why</p>
+
+<div class="nav">
+  <button class="nav-btn active" onclick="switchMode('resolver')">📓 Resolver (Compile Time)</button>
+  <button class="nav-btn" onclick="switchMode('runtime')">⚙️ Runtime (Environments)</button>
+</div>
+
+<!-- ====== RESOLVER PANEL ====== -->
+<div class="panel active" id="mode-resolver">
+  <div class="code-box">
+    <div style="color:#8b949e;font-size:.72rem;margin-bottom:8px">The program we're tracing:</div>
+    <pre id="code-display"></pre>
+  </div>
+  <div class="step-nav">
+    <button class="step-btn" id="res-prev" onclick="resStep(-1)">← Prev</button>
+    <div class="step-counter" id="res-counter"></div>
+    <button class="step-btn" id="res-next" onclick="resStep(1)">Next →</button>
+  </div>
+  <div class="step-desc" id="res-desc"></div>
+  <div class="two-col">
+    <div class="col">
+      <div class="notebook-wrap">
+        <div class="notebook-label">📓 Resolver Notebook (scopes stack) — top = current scope</div>
+        <div class="notebook" id="res-notebook"></div>
+      </div>
+      <div>
+        <div class="gv-label">🌍 globalVariables set</div>
+        <div class="gv-wrap" id="res-globals"></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="sticky-wrap">
+        <div class="sticky-label">🗒️ Sticky Notes (locals map) — created when variable is USED</div>
+        <div class="stickies" id="res-stickies"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== RUNTIME PANEL ====== -->
+<div class="panel" id="mode-runtime">
+  <div class="code-box">
+    <div style="color:#8b949e;font-size:.72rem;margin-bottom:8px">The program we're tracing:</div>
+    <pre id="rt-code-display"></pre>
+  </div>
+  <div class="step-nav">
+    <button class="step-btn" id="rt-prev" onclick="rtStep(-1)">← Prev</button>
+    <div class="step-counter" id="rt-counter"></div>
+    <button class="step-btn" id="rt-next" onclick="rtStep(1)">Next →</button>
+  </div>
+  <div class="step-desc" id="rt-desc"></div>
+  <div class="env-wrap">
+    <div class="env-label">🔗 Environment Chain (right = enclosing, ← = pointer direction)</div>
+    <div class="env-chain" id="rt-envchain"></div>
+  </div>
+  <div>
+    <div class="gv-label" style="margin-bottom:6px">📦 LoxInstance fields map (separate from env chain)</div>
+    <div id="rt-instance"></div>
+  </div>
+</div>
+
+<script>
+const CODE = `class Counter {
+  init() {
+    this.count = 0;
+  }
+  increment() {
+    this.count = this.count + 1;
+  }
+  value() {
+    return this.count;
+  }
+}
+
+var c = Counter();
+c.init();
+c.increment();
+print c.value();   // 1`;
+
+// ---- RESOLVER STEPS ----
+const RES_STEPS = [
+  {
+    title: "Start — nothing resolved yet",
+    highlight: [],
+    desc: `<div class="what">Starting point</div>
+    Resolver begins. Notebook is empty. globalVariables is empty. No sticky notes yet.<br><br>
+    Think of the resolver as a <b>teacher</b> reading your code before running it, building a map of "where is every variable?".`,
+    scopes: [],
+    globals: [],
+    stickies: []
+  },
+  {
+    title: "visitClassStmt: Counter",
+    highlight: [0],
+    desc: `<div class="what">declare("Counter") and define("Counter")</div>
+    Resolver sees <span class="hl-orange">class Counter</span>. It calls <b>declare</b> then <b>define</b>.<br><br>
+    Since <b>scopes is empty</b> (no local scopes open), this goes into <b>globalVariables</b>. Not in the notebook — it's global.`,
+    scopes: [],
+    globals: ["Counter"],
+    stickies: []
+  },
+  {
+    title: "visitClassStmt: beginScope() — class scope",
+    highlight: [0],
+    desc: `<div class="what">beginScope() — open a new notebook page for the class</div>
+    Before resolving methods, we push a <b>new page</b> onto the notebook.<br><br>
+    Then we manually write <span class="hl-blue">this → slot 0</span> on that page. This is a <b>promise</b>: "any method inside this class, if you see <code>this</code>, it lives here at slot 0."`,
+    scopes: [
+      { title: "Class scope (page 0)", active: true, rows: [{ name:"this", slot:0, state:"ready" }] }
+    ],
+    globals: ["Counter"],
+    stickies: []
+  },
+  {
+    title: "resolveFunction(init, METHOD) — beginScope",
+    highlight: [1,2,3],
+    desc: `<div class="what">Resolving method: init()</div>
+    <b>resolveFunction</b> is called. It pushes <b>another new page</b> (method scope) on top of the class scope page.<br><br>
+    <code>init</code> has no params, so nothing is written on this page yet. Body is about to be resolved.`,
+    scopes: [
+      { title: "Class scope (page 0)", active: false, rows: [{ name:"this", slot:0, state:"ready" }] },
+      { title: "Method scope: init (page 1) ← TOP", active: true, rows: [] }
+    ],
+    globals: ["Counter"],
+    stickies: []
+  },
+  {
+    title: "resolve(init body) — ThisExpr seen",
+    highlight: [2],
+    desc: `<div class="what">resolveLocal("this") — sticky note created!</div>
+    Inside <code>init</code>, we see <span class="hl-orange">this.count = 0</span>. The <b>ThisExpr</b> is a variable use.<br><br>
+    <b>resolveLocal</b> walks the notebook from top:<br>
+    • Page 1 (method scope) — no "this" here<br>
+    • Page 0 (class scope) — <b>found "this" at slot 0!</b><br><br>
+    Depth = how many pages we hopped = <b>1</b>. Slot = <b>0</b>.<br>
+    A <b>sticky note</b> is created: <code>ThisExpr* → {depth:1, slot:0}</code>`,
+    scopes: [
+      { title: "Class scope (page 0)", active: false, rows: [{ name:"this", slot:0, state:"ready" }] },
+      { title: "Method scope: init (page 1) ← TOP", active: true, rows: [] }
+    ],
+    globals: ["Counter"],
+    stickies: [
+      { expr:"ThisExpr (in init)", depth:1, slot:0 }
+    ]
+  },
+  {
+    title: "resolveFunction(init) — endScope",
+    highlight: [1],
+    desc: `<div class="what">endScope() — pop the method page</div>
+    Done resolving <code>init</code>. The method scope page is <b>torn out</b> (popped). Only class scope remains.<br><br>
+    The sticky note stays — it's in the <b>locals map</b>, not the notebook.`,
+    scopes: [
+      { title: "Class scope (page 0) ← TOP", active: true, rows: [{ name:"this", slot:0, state:"ready" }] }
+    ],
+    globals: ["Counter"],
+    stickies: [
+      { expr:"ThisExpr (in init)", depth:1, slot:0 }
+    ]
+  },
+  {
+    title: "resolveFunction(increment, METHOD)",
+    highlight: [4,5,6],
+    desc: `<div class="what">Same process for increment()</div>
+    New method scope page pushed. <code>this.count</code> inside → another <b>ThisExpr</b> → resolveLocal finds "this" at depth 1, slot 0 again → new sticky note.`,
+    scopes: [
+      { title: "Class scope (page 0)", active: false, rows: [{ name:"this", slot:0, state:"ready" }] },
+      { title: "Method scope: increment (page 1) ← TOP", active: true, rows: [] }
+    ],
+    globals: ["Counter"],
+    stickies: [
+      { expr:"ThisExpr (in init)", depth:1, slot:0 },
+      { expr:"ThisExpr (in increment, lhs)", depth:1, slot:0 },
+      { expr:"ThisExpr (in increment, rhs)", depth:1, slot:0 },
+    ]
+  },
+  {
+    title: "resolveFunction(value, METHOD)",
+    highlight: [7,8,9],
+    desc: `<div class="what">Same process for value()</div>
+    New method scope page. <code>this.count</code> → sticky note. endScope → page popped.`,
+    scopes: [
+      { title: "Class scope (page 0) ← TOP", active: true, rows: [{ name:"this", slot:0, state:"ready" }] }
+    ],
+    globals: ["Counter"],
+    stickies: [
+      { expr:"ThisExpr (in init)", depth:1, slot:0 },
+      { expr:"ThisExpr (in increment, lhs)", depth:1, slot:0 },
+      { expr:"ThisExpr (in increment, rhs)", depth:1, slot:0 },
+      { expr:"ThisExpr (in value)", depth:1, slot:0 },
+    ]
+  },
+  {
+    title: "visitClassStmt — endScope()",
+    highlight: [0],
+    desc: `<div class="what">Class scope page torn out</div>
+    All methods resolved. <b>endScope()</b> pops the class scope page. Notebook is empty again.<br><br>
+    Resolver is done with the class. All sticky notes are in place.`,
+    scopes: [],
+    globals: ["Counter"],
+    stickies: [
+      { expr:"ThisExpr (in init)", depth:1, slot:0 },
+      { expr:"ThisExpr (in increment, lhs)", depth:1, slot:0 },
+      { expr:"ThisExpr (in increment, rhs)", depth:1, slot:0 },
+      { expr:"ThisExpr (in value)", depth:1, slot:0 },
+    ]
+  },
+  {
+    title: "VarStmt: c = Counter()",
+    highlight: [11],
+    desc: `<div class="what">declare("c") and define("c")</div>
+    Resolver sees <span class="hl-orange">var c = Counter()</span>. scopes is empty → goes to <b>globalVariables</b>.<br><br>
+    <b>VariableExpr "Counter"</b> inside → resolveLocal → scopes empty → <b>no sticky note</b> (globals looked up by name at runtime).`,
+    scopes: [],
+    globals: ["Counter", "c"],
+    stickies: [
+      { expr:"ThisExpr (in init)", depth:1, slot:0 },
+      { expr:"ThisExpr (in increment, lhs)", depth:1, slot:0 },
+      { expr:"ThisExpr (in increment, rhs)", depth:1, slot:0 },
+      { expr:"ThisExpr (in value)", depth:1, slot:0 },
+    ]
+  },
+  {
+    title: "Resolver done ✅",
+    highlight: [],
+    desc: `<div class="what">All sticky notes created. Interpreter can run.</div>
+    Resolver's job is complete. Every variable use either has a <b>sticky note</b> (local/closure) or will be looked up by <b>name at runtime</b> (global).<br><br>
+    The interpreter now knows exactly where every variable lives — <b>no searching at runtime</b>.`,
+    scopes: [],
+    globals: ["Counter", "c"],
+    stickies: [
+      { expr:"ThisExpr (in init)", depth:1, slot:0 },
+      { expr:"ThisExpr (in increment, lhs)", depth:1, slot:0 },
+      { expr:"ThisExpr (in increment, rhs)", depth:1, slot:0 },
+      { expr:"ThisExpr (in value)", depth:1, slot:0 },
+    ]
+  }
+];
+
+// ---- RUNTIME STEPS ----
+const RT_STEPS = [
+  {
+    title:"Start — program begins",
+    highlight:[],
+    desc:`<div class="what">Interpreter starts. Global environment created.</div>
+    The interpreter creates a <b>global environment</b>. It uses a name-based map (not slots) because globals are looked up by name.<br><br>
+    Think of each environment as a <b>box of variables</b>. Boxes can point to an outer box (enclosing).`,
+    envs:[
+      { title:"Global Env", color:"#58a6ff", slots:[], namemap:[{k:"clock",v:"<native fn>"}] }
+    ],
+    instance: null
+  },
+  {
+    title:"visitClassStmt: Counter",
+    highlight:[0],
+    desc:`<div class="what">LoxClass object created, stored in global env.</div>
+    Interpreter creates a <b>LoxClass("Counter")</b> object holding all method LoxFunctions.<br><br>
+    Stored in global env by name "Counter".`,
+    envs:[
+      { title:"Global Env", color:"#58a6ff", slots:[], namemap:[{k:"clock",v:"<native fn>"},{k:"Counter",v:"<class Counter>"}] }
+    ],
+    instance: null
+  },
+  {
+    title:"var c = Counter() — instantiation",
+    highlight:[11],
+    desc:`<div class="what">LoxClass::call() → creates LoxInstance</div>
+    <b>Counter()</b> calls <code>LoxClass::call()</code>. It creates a new <b>LoxInstance</b> with an empty fields map.<br><br>
+    Stored in global env as "c".`,
+    envs:[
+      { title:"Global Env", color:"#58a6ff", slots:[], namemap:[{k:"clock",v:"<native fn>"},{k:"Counter",v:"<class Counter>"},{k:"c",v:"<LoxInstance>"}] }
+    ],
+    instance: { fields:[] }
+  },
+  {
+    title:"c.init() — GetExpr + bind()",
+    highlight:[12],
+    desc:`<div class="what">visitGetExpr finds method → bind() called</div>
+    <b>visitGetExpr</b> looks up "init" on instance c.<br>
+    Not in fields → check class methods → found!<br><br>
+    <b>bind(instance)</b> is called. It creates a <b>new env</b> with global as enclosing, pushes <code>instance</code> into slot 0 (<code>this</code>).<br><br>
+    Returns new <b>LoxFunction</b> with that env as its closure.`,
+    envs:[
+      { title:"bind env (init closure)", color:"#ffa657", slots:[{idx:0,val:"<LoxInstance c>",label:"this"}], namemap:[] },
+      { title:"Global Env", color:"#58a6ff", slots:[], namemap:[{k:"Counter",v:"<class>"},{k:"c",v:"<LoxInstance>"}] }
+    ],
+    instance: { fields:[] }
+  },
+  {
+    title:"LoxFunction::call() — init body",
+    highlight:[2],
+    desc:`<div class="what">executeBlock creates block env on top</div>
+    <b>call()</b> creates a new env with <b>bind env as enclosing</b>. No params for init, so slots is empty.<br><br>
+    <b>executeBlock</b> runs the body in this env.<br><br>
+    Chain: block env → bind env (has this at slot 0) → global env`,
+    envs:[
+      { title:"init block env ← TOP", color:"#3fb950", slots:[], namemap:[] },
+      { title:"bind env (closure)", color:"#ffa657", slots:[{idx:0,val:"<LoxInstance c>",label:"this"}], namemap:[] },
+      { title:"Global Env", color:"#58a6ff", slots:[], namemap:[{k:"Counter",v:"<class>"},{k:"c",v:"<LoxInstance>"}] }
+    ],
+    instance: { fields:[] }
+  },
+  {
+    title:"this.count = 0 — SetExpr",
+    highlight:[2],
+    desc:`<div class="what">ThisExpr resolved → getAt(1, 0) → LoxInstance. Then set field.</div>
+    Sticky note says: <b>ThisExpr → depth:1, slot:0</b><br><br>
+    Interpreter calls <b>getAt(1, 0)</b>:<br>
+    • Hop 1 env up from block env → bind env<br>
+    • slots[0] = <LoxInstance c><br><br>
+    Now calls <b>instance->set("count", 0)</b> → stored in instance's <b>fields map</b>.`,
+    envs:[
+      { title:"init block env ← TOP", color:"#3fb950", slots:[], namemap:[] },
+      { title:"bind env (closure)", color:"#ffa657", slots:[{idx:0,val:"<LoxInstance c>",label:"this"}], namemap:[] },
+      { title:"Global Env", color:"#58a6ff", slots:[], namemap:[{k:"Counter",v:"<class>"},{k:"c",v:"<LoxInstance>"}] }
+    ],
+    instance: { fields:[{k:"count",v:"0"}] }
+  },
+  {
+    title:"init() returns — envs cleaned up",
+    highlight:[12],
+    desc:`<div class="what">Block env and bind env go out of scope</div>
+    <b>executeBlock</b> finishes. The block env and bind env are destroyed (shared_ptr ref count → 0).<br><br>
+    But the <b>instance's fields map</b> survives — it lives on the LoxInstance object, not in any env.`,
+    envs:[
+      { title:"Global Env", color:"#58a6ff", slots:[], namemap:[{k:"Counter",v:"<class>"},{k:"c",v:"<LoxInstance>"}] }
+    ],
+    instance: { fields:[{k:"count",v:"0"}] }
+  },
+  {
+    title:"c.increment() — bind() again",
+    highlight:[13],
+    desc:`<div class="what">Fresh bind env created for increment</div>
+    Same process. <b>bind(instance c)</b> creates a new env, pushes instance into slot 0.<br><br>
+    Body runs. <b>this.count</b> → getAt(1,0) → instance c → get field "count" = 0 → +1 → set field "count" = 1.`,
+    envs:[
+      { title:"increment block env ← TOP", color:"#3fb950", slots:[], namemap:[] },
+      { title:"bind env (closure)", color:"#ffa657", slots:[{idx:0,val:"<LoxInstance c>",label:"this"}], namemap:[] },
+      { title:"Global Env", color:"#58a6ff", slots:[], namemap:[{k:"Counter",v:"<class>"},{k:"c",v:"<LoxInstance>"}] }
+    ],
+    instance: { fields:[{k:"count",v:"1"}] }
+  },
+  {
+    title:"print c.value() — final result",
+    highlight:[14],
+    desc:`<div class="what">value() runs, returns this.count = 1</div>
+    <b>bind(instance c)</b> → closure env with this=c. <b>return this.count</b> → getAt(1,0) → instance c → fields["count"] = 1.<br><br>
+    <b>print</b> outputs <span class="hl-green">1</span>. ✅`,
+    envs:[
+      { title:"value block env ← TOP", color:"#3fb950", slots:[], namemap:[] },
+      { title:"bind env (closure)", color:"#ffa657", slots:[{idx:0,val:"<LoxInstance c>",label:"this"}], namemap:[] },
+      { title:"Global Env", color:"#58a6ff", slots:[], namemap:[{k:"Counter",v:"<class>"},{k:"c",v:"<LoxInstance>"}] }
+    ],
+    instance: { fields:[{k:"count",v:"1"}] }
+  }
+];
+
+const CODE_LINES = CODE.split('\n');
+
+let resIdx = 0, rtIdx = 0;
+
+function renderCode(containerId, highlights) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = CODE_LINES.map((line, i) => {
+    const esc = line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const isHl = highlights.includes(i);
+    return `<span style="${isHl?'background:#2d2500;display:block;border-left:3px solid #ffa657;padding-left:4px':'display:block;padding-left:7px'}">${esc}</span>`;
+  }).join('');
+}
+
+function renderNotebook(scopes) {
+  const el = document.getElementById('res-notebook');
+  if (!scopes.length) { el.innerHTML = '<div class="nb-empty">Notebook empty (no open scopes)</div>'; return; }
+  el.innerHTML = [...scopes].reverse().map((page, i) => `
+    <div class="nb-page ${page.active?'active-page':''}">
+      <div class="nb-page-title">${page.title} ${page.active?'<span>← writing here</span>':''}</div>
+      ${page.rows.length ? page.rows.map(r=>`
+        <div class="nb-row">
+          <span class="nb-name">${r.name}</span>
+          <span>→</span>
+          <span class="nb-slot">slot ${r.slot}</span>
+          <span class="nb-state">(${r.state})</span>
+        </div>`).join('') : '<div class="nb-empty">no entries yet</div>'}
+    </div>
+    ${i < scopes.length-1 ? '<div class="nb-arrow">↓ (below)</div>' : ''}`
+  ).join('');
+}
+
+function renderGlobals(globals) {
+  const el = document.getElementById('res-globals');
+  el.innerHTML = globals.length ? globals.map(g=>`<div class="gv-chip">${g}</div>`).join('') : '<span style="color:#30363d;font-size:.75rem;font-style:italic">empty</span>';
+}
+
+function renderStickies(stickies) {
+  const el = document.getElementById('res-stickies');
+  el.innerHTML = stickies.length ? stickies.map(s=>`
+    <div class="sticky">
+      <div class="s-expr">${s.expr}</div>
+      <div class="s-val">depth: ${s.depth}, slot: ${s.slot}</div>
+    </div>`).join('') : '<div class="sticky-none">no sticky notes yet</div>';
+}
+
+function renderEnvChain(envs) {
+  const el = document.getElementById('rt-envchain');
+  el.innerHTML = envs.map((env, i) => `
+    <div style="display:flex;align-items:flex-start">
+      <div class="env-box" style="border-color:${env.color}">
+        <div class="env-box-title" style="color:${env.color}">${env.title}</div>
+        ${env.slots.length ? env.slots.map(s=>`
+          <div class="env-slot-row">
+            <span class="slot-idx">[${s.idx}]</span>
+            <span class="slot-val">${s.val}</span>
+            <span style="color:#8b949e;font-size:.7rem">(${s.label})</span>
+          </div>`).join('') : '<div class="env-empty">slots: empty</div>'}
+        ${env.namemap.length ? `<div class="env-name-map">${env.namemap.map(n=>`
+          <div class="env-name-row"><span class="env-name-k">${n.k}</span><span style="color:#8b949e"> → </span><span class="env-name-v">${n.v}</span></div>`).join('')}</div>` : ''}
+      </div>
+      ${i < envs.length-1 ? '<div class="env-arrow">←</div>' : ''}
+    </div>`).join('');
+}
+
+function renderInstance(inst) {
+  const el = document.getElementById('rt-instance');
+  if (!inst) { el.innerHTML = '<span style="color:#30363d;font-size:.75rem;font-style:italic">no instance yet</span>'; return; }
+  el.innerHTML = `<div class="env-box" style="border-color:#bc8cff;display:inline-block">
+    <div class="env-box-title" style="color:#bc8cff">LoxInstance c — fields map</div>
+    ${inst.fields.length ? inst.fields.map(f=>`
+      <div class="env-name-row"><span class="env-name-k">${f.k}</span><span style="color:#8b949e"> → </span><span class="env-name-v">${f.v}</span></div>`).join('') 
+    : '<div class="env-empty">fields: empty</div>'}
+  </div>`;
+}
+
+function renderResStep() {
+  const s = RES_STEPS[resIdx];
+  renderCode('code-display', s.highlight);
+  document.getElementById('res-desc').innerHTML = s.desc;
+  document.getElementById('res-counter').textContent = `Step ${resIdx+1} / ${RES_STEPS.length}`;
+  document.getElementById('res-prev').disabled = resIdx === 0;
+  document.getElementById('res-next').disabled = resIdx === RES_STEPS.length-1;
+  renderNotebook(s.scopes);
+  renderGlobals(s.globals);
+  renderStickies(s.stickies);
+}
+
+function renderRtStep() {
+  const s = RT_STEPS[rtIdx];
+  renderCode('rt-code-display', s.highlight);
+  document.getElementById('rt-desc').innerHTML = s.desc;
+  document.getElementById('rt-counter').textContent = `Step ${rtIdx+1} / ${RT_STEPS.length}`;
+  document.getElementById('rt-prev').disabled = rtIdx === 0;
+  document.getElementById('rt-next').disabled = rtIdx === RT_STEPS.length-1;
+  renderEnvChain(s.envs);
+  renderInstance(s.instance);
+}
+
+function resStep(d) { resIdx = Math.max(0, Math.min(RES_STEPS.length-1, resIdx+d)); renderResStep(); }
+function rtStep(d) { rtIdx = Math.max(0, Math.min(RT_STEPS.length-1, rtIdx+d)); renderRtStep(); }
+
+function switchMode(m) {
+  document.getElementById('mode-resolver').classList.toggle('active', m==='resolver');
+  document.getElementById('mode-runtime').classList.toggle('active', m==='runtime');
+  document.querySelectorAll('.nav-btn').forEach((b,i) => b.classList.toggle('active', (m==='resolver'&&i===0)||(m==='runtime'&&i===1)));
+}
+
+renderResStep();
+renderRtStep();
+</script>
+</body>
+</html>

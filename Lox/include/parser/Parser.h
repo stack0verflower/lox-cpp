@@ -26,7 +26,7 @@ GRAMMAR (Precedence from lowest to highest):
 ────────────────────────────────────────────────────────────────────────────
 
 expression  → assignment
-assignment  → IDENTIFIER "=" assignment | logic_or
+assignment  → ( call "." )? IDENTIFIER "=" assignment | logic_or ;
 logic_or    → logic_and ( "or" logic_and )* ;
 logic_and   → equality ( "and" equality )* ;
 equality    → comparison ( ( "==" | "!=" ) comparison )*
@@ -34,8 +34,8 @@ comparison  → term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term        → factor ( ( "+" | "-" ) factor )*
 factor      → unary ( ( "*" | "/" ) unary )*
 unary       → ( "!" | "-" ) unary | call;
-call        → primary ( "(" arguments? ")" )* ;
-primary     → NUMBER | IDENTIFIER | "(" expression ")" | "fun" "(" parameters? ")" block   ← lambda
+call        → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
+primary     → NUMBER | THIS | IDENTIFIER | "(" expression ")" | "fun" "(" parameters? ")" block   ← lambda
 
 The argument list grammer is:
 arguments   → expression ( "," expression )* ;
@@ -82,8 +82,10 @@ private:
 	std::unique_ptr<Stmt> declaration();
 	std::unique_ptr<Stmt> statement();
 
+	std::unique_ptr<Stmt> classDeclaration();
 	std::unique_ptr<Stmt> funcDeclaration(const std::string& kind);
 	std::unique_ptr<Stmt> varDeclaration();
+
 	std::unique_ptr<Stmt> forStatement();
 	std::unique_ptr<Stmt> ifStatement();
 	std::unique_ptr<Stmt> printStatement();

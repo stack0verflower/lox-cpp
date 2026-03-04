@@ -23,6 +23,7 @@ public:
 	void visitBlockStmt(const BlockStmt& stmt) override;
 	void visitFuncStmt(const FuncStmt& stmt) override;
 	void visitReturnStmt(const ReturnStmt& stmt) override;
+	void visitClassStmt(const ClassStmt& stmt) override;
 
 	LiteralValue visitAssignExpr(const Assign& expr) override;
 	LiteralValue visitBinaryExpr(const Binary& expr) override;
@@ -33,6 +34,9 @@ public:
 	LiteralValue visitVariableExpr(const VariableExpr& expr) override;
 	LiteralValue visitCallExpr(const CallExpr& expr) override;
 	LiteralValue visitLambdaExpr(const LambdaExpr& expr) override;
+	LiteralValue visitGetExpr(const GetExpr& expr) override;
+	LiteralValue visitSetExpr(const SetExpr& expr) override;
+	LiteralValue visitThisExpr(const ThisExpr& expr) override;
 
 	// TODO: privatise this later
 	std::string stringify(LiteralValue value);

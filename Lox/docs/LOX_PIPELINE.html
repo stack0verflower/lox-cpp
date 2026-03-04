@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lox Pipeline Visualizer</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', sans-serif; padding: 20px; }
+h2 { color: #58a6ff; text-align: center; margin-bottom: 4px; }
+.subtitle { color: #8b949e; text-align: center; font-size: .8rem; margin-bottom: 20px; }
+
+/* Tabs */
+.tabs { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+.tab { padding: 6px 16px; border-radius: 20px; border: none; cursor: pointer; font-size: .82rem; background: #21262d; color: #e6edf3; }
+.tab.active { background: #58a6ff; color: #0d1117; font-weight: bold; }
+
+/* Panels */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* Code block */
+.code-block { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
+.code-block pre { color: #e6edf3; font-size: .85rem; line-height: 1.7; font-family: monospace; }
+.info-box { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px; margin-top: 12px; font-size: .82rem; line-height: 1.8; color: #8b949e; }
+.info-box .title { color: #ffa657; font-weight: bold; margin-bottom: 6px; }
+
+/* Tree */
+.tree-wrap { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; overflow-x: auto; }
+.tree-hint { color: #8b949e; font-size: .75rem; margin-bottom: 10px; }
+.tree-node { margin-left: 0; }
+.tree-children { margin-left: 20px; border-left: 1px dashed #30363d; padding-left: 12px; }
+.node-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; cursor: pointer; }
+.node-toggle { color: #8b949e; font-size: 10px; width: 10px; }
+.node-label { background: #161b22; border: 1px solid #30363d; border-radius: 5px; padding: 2px 9px; font-size: .78rem; font-family: monospace; }
+.node-note { color: #8b949e; font-size: .72rem; }
+.node-label.highlight { border-color: #ffa657; color: #ffa657; background: #2d1f0a; }
+
+/* Resolver */
+.resolver-wrap { display: flex; gap: 16px; flex-wrap: wrap; }
+.resolver-steps { flex: 1 1 300px; }
+.resolver-detail { flex: 1 1 260px; }
+.res-step { cursor: pointer; padding: 8px 12px; border-radius: 6px; margin-bottom: 4px; border: 1px solid #21262d; background: #0d1117; font-size: .78rem; }
+.res-step.active { background: #1a2332; border-color: #58a6ff; }
+.res-node { color: #58a6ff; margin-right: 8px; }
+.res-action { color: #8b949e; }
+.res-result { color: #3fb950; margin-left: 8px; }
+.detail-box { background: #161b22; border: 1px solid #58a6ff; border-radius: 8px; padding: 16px; }
+.detail-title { color: #58a6ff; font-weight: bold; margin-bottom: 8px; font-size: .85rem; }
+.detail-text { color: #e6edf3; font-size: .82rem; margin-bottom: 8px; }
+.detail-result { background: #0d2d1a; border: 1px solid #3fb950; border-radius: 6px; padding: 6px 10px; font-family: monospace; font-size: .78rem; color: #3fb950; }
+.insight-box { margin-top: 14px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px; font-size: .78rem; color: #8b949e; line-height: 1.7; }
+
+/* Env */
+.env-stage-btns { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.env-btn { padding: 5px 12px; border-radius: 16px; border: none; cursor: pointer; font-size: .78rem; background: #21262d; color: #e6edf3; }
+.env-btn.active { background: #ffa657; color: #0d1117; }
+.env-chain { display: flex; align-items: center; gap: 0; flex-wrap: wrap; overflow-x: auto; padding-bottom: 8px; }
+.env-box { display: inline-block; background: #161b22; border-radius: 8px; padding: 10px 14px; min-width: 160px; }
+.env-name { font-weight: bold; font-size: .8rem; margin-bottom: 6px; }
+.env-var { font-size: .75rem; font-family: monospace; margin-bottom: 2px; }
+.env-var .k { color: #79c0ff; }
+.env-var .sep { color: #8b949e; }
+.env-var .v { color: #3fb950; }
+.env-enc { margin-top: 8px; font-size: .7rem; color: #8b949e; }
+.env-arrow { color: #ffa657; font-size: 1.4rem; margin: 0 8px; }
+.env-note { margin-top: 12px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px; font-size: .78rem; color: #8b949e; line-height: 1.7; }
+
+/* Interpreter */
+.interp-step { display: flex; gap: 12px; margin-bottom: 8px; }
+.step-line { display: flex; flex-direction: column; align-items: center; }
+.step-num { background: #21262d; color: #8b949e; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-size: .72rem; flex-shrink: 0; }
+.step-connector { width: 1px; flex: 1; background: #21262d; margin-top: 2px; }
+.step-body { background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 10px 14px; flex: 1; margin-bottom: 4px; }
+.step-title { color: #bc8cff; font-family: monospace; font-size: .82rem; margin-bottom: 4px; }
+.step-detail { color: #8b949e; font-size: .78rem; line-height: 1.6; }
+.output-box { background: #0d2d1a; border: 1px solid #3fb950; border-radius: 8px; padding: 14px; text-align: center; color: #3fb950; font-weight: bold; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<h2>Lox Pipeline Visualizer</h2>
+<p class="subtitle">b.eat() with this — full trace</p>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab(0)">Program</button>
+  <button class="tab" onclick="showTab(1)">AST</button>
+  <button class="tab" onclick="showTab(2)">Resolver</button>
+  <button class="tab" onclick="showTab(3)">Environments</button>
+  <button class="tab" onclick="showTab(4)">Interpreter</button>
+</div>
+
+<!-- PANEL 0: Program -->
+<div class="panel active" id="p0">
+  <div class="code-block">
+    <div style="color:#8b949e;font-size:.75rem;margin-bottom:8px">test.lox</div>
+    <pre>class Bacon {
+  eat() {
+    print this.name;
+  }
+}
+var b = Bacon();
+b.name = "crispy";
+b.eat();</pre>
+  </div>
+  <div class="info-box">
+    <div class="title">What this tests:</div>
+    ✅ Class declaration with method<br>
+    ✅ Instantiation via call<br>
+    ✅ Field set on instance<br>
+    ✅ Method call → this binding → field get
+  </div>
+</div>
+
+<!-- PANEL 1: AST -->
+<div class="panel" id="p1">
+  <div class="tree-hint">Click nodes to expand/collapse. <span style="color:#ffa657">Orange = ThisExpr</span></div>
+  <div class="tree-wrap" id="ast-root"></div>
+</div>
+
+<!-- PANEL 2: Resolver -->
+<div class="panel" id="p2">
+  <div class="resolver-wrap">
+    <div class="resolver-steps" id="res-steps"></div>
+    <div class="resolver-detail">
+      <div id="res-detail"></div>
+      <div class="insight-box">
+        <strong style="color:#ffa657">Key insight:</strong><br>
+        <span style="color:#79c0ff">"this"</span> is injected as a real variable into the class scope.
+        <span style="color:#79c0ff">resolveLocal</span> finds it just like any other variable.
+        Property names after <span style="color:#79c0ff">.</span> are always skipped — runtime only.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL 3: Environments -->
+<div class="panel" id="p3">
+  <div class="env-stage-btns" id="env-btns"></div>
+  <div class="code-block">
+    <div style="color:#8b949e;font-size:.75rem;margin-bottom:10px">← arrow = enclosing pointer</div>
+    <div class="env-chain" id="env-chain"></div>
+  </div>
+  <div class="env-note" id="env-note"></div>
+</div>
+
+<!-- PANEL 4: Interpreter -->
+<div class="panel" id="p4">
+  <div id="interp-steps"></div>
+  <div class="output-box">Output: crispy</div>
+</div>
+
+<script>
+// ---- Tab switching ----
+function showTab(i) {
+  document.querySelectorAll('.panel').forEach((p,j) => p.classList.toggle('active', i===j));
+  document.querySelectorAll('.tab').forEach((t,j) => t.classList.toggle('active', i===j));
+}
+
+// ---- AST ----
+const AST = {
+  label:"Program", children:[
+    { label:"ClassStmt: Bacon", children:[
+      { label:'name: "Bacon"' },
+      { label:"methods:", children:[
+        { label:"FuncStmt: eat", children:[
+          { label:"params: []" },
+          { label:"body:", children:[
+            { label:"PrintStmt", children:[
+              { label:"GetExpr", note:"this.name", children:[
+                { label:"ThisExpr", note:"keyword=this", highlight:true },
+                { label:'name: "name"' }
+              ]}
+            ]}
+          ]}
+        ]}
+      ]}
+    ]},
+    { label:'VarStmt: b', children:[
+      { label:'CallExpr', note:"Bacon()", children:[
+        { label:'VariableExpr: "Bacon"' },
+        { label:"args: []" }
+      ]}
+    ]},
+    { label:"ExprStmt", children:[
+      { label:"SetExpr: b.name", children:[
+        { label:'VariableExpr: "b"' },
+        { label:'name: "name"' },
+        { label:'StringLiteral: "crispy"' }
+      ]}
+    ]},
+    { label:"ExprStmt", children:[
+      { label:"CallExpr", note:"b.eat()", children:[
+        { label:"GetExpr", note:"b.eat", children:[
+          { label:'VariableExpr: "b"' },
+          { label:'name: "eat"' }
+        ]},
+        { label:"args: []" }
+      ]}
+    ]}
+  ]
+};
+
+const COLORS = ["#58a6ff","#3fb950","#ffa657","#bc8cff","#39d0d8","#f778ba"];
+
+function buildTree(node, depth) {
+  const wrap = document.createElement('div');
+  wrap.className = 'tree-node';
+  const hasC = node.children && node.children.length > 0;
+
+  const row = document.createElement('div');
+  row.className = 'node-row';
+
+  const tog = document.createElement('span');
+  tog.className = 'node-toggle';
+  tog.textContent = hasC ? '▾' : '•';
+  row.appendChild(tog);
+
+  const lbl = document.createElement('span');
+  lbl.className = 'node-label' + (node.highlight ? ' highlight' : '');
+  lbl.textContent = node.label;
+  lbl.style.color = node.highlight ? '#ffa657' : COLORS[depth % COLORS.length];
+  row.appendChild(lbl);
+
+  if (node.note) {
+    const nt = document.createElement('span');
+    nt.className = 'node-note';
+    nt.textContent = node.note;
+    row.appendChild(nt);
+  }
+
+  wrap.appendChild(row);
+
+  if (hasC) {
+    const childWrap = document.createElement('div');
+    childWrap.className = 'tree-children';
+    node.children.forEach(c => childWrap.appendChild(buildTree(c, depth+1)));
+    wrap.appendChild(childWrap);
+
+    row.addEventListener('click', () => {
+      const open = childWrap.style.display !== 'none';
+      childWrap.style.display = open ? 'none' : '';
+      tog.textContent = open ? '▸' : '▾';
+    });
+  }
+  return wrap;
+}
+document.getElementById('ast-root').appendChild(buildTree(AST, 0));
+
+// ---- Resolver ----
+const RES = [
+  { node:"ClassStmt: Bacon", action:'declare("Bacon") → scopes.empty() → globalVariables.insert("Bacon")', result:'globalVariables: {"Bacon"}' },
+  { node:"ClassStmt: Bacon", action:'define("Bacon") → scopes.empty() → already in globalVariables, skip', result:'no change' },
+  { node:"resolveFunction(eat, METHOD)", action:'Save enclosing FunctionType. Set currentFunction=METHOD. beginScope() → push new page in notebook', result:'scopes: [{}]' },
+  { node:"resolveFunction — inject this", action:'declare("this") → scopes.back() → insert with slot 0. define("this") → mark initialized', result:'scopes: [{this:0}]' },
+  { node:"resolve(body) — ThisExpr", action:'resolveLocal("this") — walks notebook pages, finds "this" on page 0 at depth 0 → sticky note created', result:'locals[ThisExpr*] = {depth:0, idx:0}' },
+  { node:"GetExpr .name", action:"resolve(object=ThisExpr) only — property name skipped, runtime job", result:"sticky note for ThisExpr already made" },
+  { node:"resolveFunction end", action:"endScope() → pop page. Restore enclosing FunctionType", result:"scopes: []" },
+  { node:'VarStmt: b', action:'declare("b") → scopes.empty() → globalVariables.insert("b")', result:'globalVariables: {"Bacon","b"}' },
+  { node:'VariableExpr: "Bacon"', action:'resolveLocal("Bacon") → scopes empty → no sticky note (global, runtime lookup)', result:'no locals entry' },
+  { node:'SetExpr: b.name', action:'resolveLocal("b") → scopes empty → no sticky note. Skip .name (runtime)', result:'no locals entry' },
+  { node:'CallExpr: b.eat()', action:'GetExpr → resolveLocal("b") → scopes empty → no sticky note. Skip .eat (runtime)', result:'no locals entry' },
+];
+
+let activeRes = null;
+const resSteps = document.getElementById('res-steps');
+const resDetail = document.getElementById('res-detail');
+
+RES.forEach((s, i) => {
+  const el = document.createElement('div');
+  el.className = 'res-step';
+  el.innerHTML = `<span class="res-node">${s.node}</span><span class="res-action">${s.action}</span>${s.result?`<span class="res-result">→ ${s.result}</span>`:''}`;
+  el.addEventListener('click', () => {
+    if (activeRes === i) { activeRes = null; resDetail.innerHTML = ''; el.classList.remove('active'); return; }
+    document.querySelectorAll('.res-step').forEach(e => e.classList.remove('active'));
+    el.classList.add('active');
+    activeRes = i;
+    resDetail.innerHTML = `<div class="detail-box">
+      <div class="detail-title">${s.node}</div>
+      <div class="detail-text">${s.action}</div>
+      ${s.result ? `<div class="detail-result">${s.result}</div>` : ''}
+    </div>`;
+  });
+  resSteps.appendChild(el);
+});
+
+// ---- Environments ----
+const ENVS = [
+  {
+    label:"After var b = Bacon()",
+    note:"Global env holds Bacon class and instance b. Instance has its own fields map — separate from env chain.",
+    chain:[
+      { name:"Global Env", color:"#58a6ff", vars:[{k:"Bacon",v:"<class Bacon>"},{k:"b",v:"<LoxInstance>"}] }
+    ]
+  },
+  {
+    label:"bind() called on eat",
+    note:"bind() creates a closure env with this=instance. This env is captured inside the returned LoxFunction. This is how 'this' is remembered.",
+    chain:[
+      { name:"closure env (eat)", color:"#ffa657", vars:[{k:"this",v:"<LoxInstance b>"}], enc:true },
+      { name:"Global Env", color:"#58a6ff", vars:[{k:"Bacon",v:"<class Bacon>"},{k:"b",v:"<LoxInstance>"}] }
+    ]
+  },
+  {
+    label:"Inside eat() body",
+    note:"executeBlock creates yet another env for the function body. Lookup chain: body → closure (finds 'this') → global (finds 'Bacon','b').",
+    chain:[
+      { name:"eat() block env", color:"#3fb950", vars:[{k:"(no locals)",v:""}], enc:true },
+      { name:"closure env", color:"#ffa657", vars:[{k:"this",v:"<LoxInstance b>"}], enc:true },
+      { name:"Global Env", color:"#58a6ff", vars:[{k:"Bacon",v:"<class Bacon>"},{k:"b",v:"<LoxInstance>"}] }
+    ]
+  }
+];
+
+let envStage = 0;
+const envBtns = document.getElementById('env-btns');
+const envChain = document.getElementById('env-chain');
+const envNote = document.getElementById('env-note');
+
+function renderEnv(i) {
+  envStage = i;
+  document.querySelectorAll('.env-btn').forEach((b,j) => b.classList.toggle('active', j===i));
+  const stage = ENVS[i];
+  envChain.innerHTML = '';
+  stage.chain.forEach((env, idx) => {
+    const box = document.createElement('div');
+    box.className = 'env-box';
+    box.style.border = `1px solid ${env.color}`;
+    let html = `<div class="env-name" style="color:${env.color}">${env.name}</div>`;
+    env.vars.forEach(v => { html += `<div class="env-var"><span class="k">${v.k}</span><span class="sep"> → </span><span class="v">${v.v}</span></div>`; });
+    if (env.enc) html += `<div class="env-enc">↑ enclosing</div>`;
+    box.innerHTML = html;
+    envChain.appendChild(box);
+    if (idx < stage.chain.length - 1) {
+      const arr = document.createElement('div');
+      arr.className = 'env-arrow';
+      arr.textContent = '←';
+      envChain.appendChild(arr);
+    }
+  });
+  envNote.textContent = stage.note;
+}
+
+ENVS.forEach((s, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'env-btn' + (i===0?' active':'');
+  btn.textContent = s.label;
+  btn.addEventListener('click', () => renderEnv(i));
+  envBtns.appendChild(btn);
+});
+renderEnv(0);
+
+// ---- Interpreter ----
+const INTERP = [
+  { title:"visitClassStmt", detail:'Creates LoxClass("Bacon", {eat: LoxFunction}). Defines "Bacon" in global env.' },
+  { title:'visitVarStmt: b', detail:'Evaluates CallExpr → visitCallExpr → LoxClass::call() → new LoxInstance(Bacon). Stores as "b" in global env.' },
+  { title:"visitExprStmt → SetExpr", detail:'Evaluates "b" → LoxInstance. Calls instance->set("name", "crispy"). Stored in instance fields map.' },
+  { title:"visitExprStmt → CallExpr b.eat()", detail:"Evaluates callee: GetExpr b.eat → visitGetExpr." },
+  { title:"visitGetExpr: b.eat", detail:'Gets instance b. Calls instance->get("eat"). Not in fields → klass->findMethod("eat") → found. bind(instance) → new closure env with this=b. Returns shared_ptr<LoxCallable>.' },
+  { title:"visitCallExpr: eat()", detail:"holds_alternative<LoxCallable> ✅  arity 0==0 ✅  Calls LoxFunction::call()." },
+  { title:"LoxFunction::call()", detail:"Creates block env with closure as parent. executeBlock(body, env)." },
+  { title:"visitPrintStmt → GetExpr this.name", detail:'visitGetExpr: evaluates ThisExpr → looks up "this" at depth 1 → LoxInstance b. Calls b->get("name") → found in fields → "crispy".' },
+  { title:'Output', detail:'"crispy" printed to stdout. Environments cleaned up by shared_ptr.' },
+];
+
+const interpWrap = document.getElementById('interp-steps');
+INTERP.forEach((s, i) => {
+  const row = document.createElement('div');
+  row.className = 'interp-step';
+  row.innerHTML = `
+    <div class="step-line">
+      <div class="step-num">${i+1}</div>
+      ${i < INTERP.length-1 ? '<div class="step-connector"></div>' : ''}
+    </div>
+    <div class="step-body">
+      <div class="step-title">${s.title}</div>
+      <div class="step-detail">${s.detail}</div>
+    </div>`;
+  interpWrap.appendChild(row);
+});
+</script>
+</body>
+</html>

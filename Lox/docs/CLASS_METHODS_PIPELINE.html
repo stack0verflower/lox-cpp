@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lox Pipeline</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', monospace; padding: 24px; }
+  h1 { text-align: center; color: #58a6ff; margin-bottom: 6px; font-size: 1.4rem; }
+  .subtitle { text-align: center; color: #8b949e; margin-bottom: 28px; font-size: 0.85rem; }
+  .code-banner { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px 20px; text-align: center; margin-bottom: 28px; font-size: 1rem; color: #79c0ff; letter-spacing: 1px; }
+
+  .phase { margin-bottom: 20px; }
+  .phase-header { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 8px 8px 0 0; cursor: pointer; user-select: none; }
+  .phase-header:hover { filter: brightness(1.1); }
+  .phase-title { font-size: 1rem; font-weight: bold; }
+  .phase-tag { font-size: 0.72rem; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 10px; color: #e6edf3; }
+  .phase-body { border: 1px solid #30363d; border-top: none; border-radius: 0 0 8px 8px; overflow: hidden; }
+
+  .step { padding: 14px 18px; border-bottom: 1px solid #21262d; display: flex; gap: 14px; align-items: flex-start; }
+  .step:last-child { border-bottom: none; }
+  .step-num { background: #21262d; color: #8b949e; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0; margin-top: 2px; }
+  .step-content { flex: 1; }
+  .step-title { font-size: 0.9rem; color: #e6edf3; margin-bottom: 4px; }
+  .step-detail { font-size: 0.78rem; color: #8b949e; line-height: 1.5; }
+  .code { background: #161b22; border: 1px solid #30363d; border-radius: 4px; padding: 2px 7px; font-family: monospace; font-size: 0.78rem; color: #79c0ff; }
+  .arrow-down { text-align: center; color: #30363d; font-size: 1.2rem; margin: 4px 0; }
+  .highlight { color: #ffa657; }
+  .green { color: #3fb950; }
+  .red { color: #f85149; }
+  .yellow { color: #d29922; }
+
+  /* Phase colors */
+  .p1 .phase-header { background: #1a2332; border-left: 3px solid #58a6ff; }
+  .p2 .phase-header { background: #1a2d1a; border-left: 3px solid #3fb950; }
+  .p3 .phase-header { background: #2d1f1a; border-left: 3px solid #ffa657; }
+  .p4 .phase-header { background: #2d1a2d; border-left: 3px solid #bc8cff; }
+  .p5 .phase-header { background: #1a2d2d; border-left: 3px solid #39d0d8; }
+
+  .collapsed .phase-body { display: none; }
+  .toggle-icon { margin-left: auto; color: #8b949e; }
+
+  .flow-line { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px; color: #8b949e; font-size: 0.78rem; }
+  .flow-arrow { color: #30363d; font-size: 1.4rem; }
+
+  .final-box { background: #0d2d1a; border: 1px solid #3fb950; border-radius: 8px; padding: 16px; text-align: center; margin-top: 8px; }
+  .final-box .result { font-size: 1.1rem; color: #3fb950; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1>🔍 Lox Interpreter Pipeline</h1>
+<p class="subtitle">Full trace — click any phase to expand/collapse</p>
+
+<div class="code-banner">Bacon().eat();</div>
+
+<!-- PHASE 1: SCANNER -->
+<div class="phase p1" id="ph1">
+  <div class="phase-header" onclick="toggle('ph1')">
+    <span class="phase-title">📦 Phase 1 — Scanner (Lexer)</span>
+    <span class="phase-tag">Lexer.cpp</span>
+    <span class="toggle-icon">▾</span>
+  </div>
+  <div class="phase-body">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Raw source → Token stream</div>
+        <div class="step-detail">
+          Input: <span class="code">Bacon().eat();</span><br><br>
+          Output tokens:<br>
+          <span class="code">IDENTIFIER(Bacon)</span> <span class="code">LEFT_PAREN</span> <span class="code">RIGHT_PAREN</span> <span class="code">DOT</span> <span class="code">IDENTIFIER(eat)</span> <span class="code">LEFT_PAREN</span> <span class="code">RIGHT_PAREN</span> <span class="code">SEMICOLON</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Each token carries: type, lexeme, line number</div>
+        <div class="step-detail">e.g. <span class="code">Token{IDENTIFIER, "Bacon", 1}</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-down">↓</div>
+
+<!-- PHASE 2: PARSER -->
+<div class="phase p2" id="ph2">
+  <div class="phase-header" onclick="toggle('ph2')">
+    <span class="phase-title">🌳 Phase 2 — Parser</span>
+    <span class="phase-tag">Parser.cpp</span>
+    <span class="toggle-icon">▾</span>
+  </div>
+  <div class="phase-body">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Recursive descent — builds AST</div>
+        <div class="step-detail">Starts at <span class="code">parseExpression()</span> → <span class="code">parseCall()</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Sees <span class="code">Bacon</span> → VariableExpr("Bacon")</div>
+        <div class="step-detail">Looks up name in current scope chain at runtime</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Sees <span class="code">()</span> → wraps in CallExpr</div>
+        <div class="step-detail"><span class="code">CallExpr { callee: VariableExpr("Bacon"), args: [] }</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Sees <span class="code">.eat</span> → wraps in GetExpr</div>
+        <div class="step-detail"><span class="code">GetExpr { object: CallExpr(...), name: "eat" }</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">Sees <span class="code">()</span> again → wraps in CallExpr</div>
+        <div class="step-detail">
+          Final AST:<br>
+          <span class="code">CallExpr { callee: GetExpr { object: CallExpr{VariableExpr("Bacon")}, name:"eat" }, args:[] }</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-down">↓</div>
+
+<!-- PHASE 3: RESOLVER -->
+<div class="phase p3" id="ph3">
+  <div class="phase-header" onclick="toggle('ph3')">
+    <span class="phase-title">🔎 Phase 3 — Resolver (Static Analysis)</span>
+    <span class="phase-tag">Resolver.cpp</span>
+    <span class="toggle-icon">▾</span>
+  </div>
+  <div class="phase-body">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Walks AST before interpretation</div>
+        <div class="step-detail">Pre-computes scope depth for every variable reference. Catches compile-time errors.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Resolves <span class="code">Bacon</span> → global scope, depth recorded</div>
+        <div class="step-detail">Stores result in <span class="code">locals</span> map: <span class="code">locals[VariableExpr*] = depth</span></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title"><span class="code">.eat</span> — NOT resolved here</div>
+        <div class="step-detail">Property access is dynamic — resolved at runtime on the actual instance. Resolver skips it.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-down">↓</div>
+
+<!-- PHASE 4: INTERPRETER -->
+<div class="phase p4" id="ph4">
+  <div class="phase-header" onclick="toggle('ph4')">
+    <span class="phase-title">⚙️ Phase 4 — Interpreter (Execution)</span>
+    <span class="phase-tag">Interpreter.cpp</span>
+    <span class="toggle-icon">▾</span>
+  </div>
+  <div class="phase-body">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">visitCallExpr — outer call <span class="code">Bacon()</span></div>
+        <div class="step-detail">Evaluates callee → looks up <span class="code">Bacon</span> in environment → gets <span class="code">shared_ptr&lt;LoxCallable&gt;</span> (the class object)</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">LoxClass::call() — instantiation</div>
+        <div class="step-detail">Creates <span class="code">shared_ptr&lt;LoxInstance&gt;</span> with <span class="code">klass = &amp;Bacon</span>, empty fields map. Returns it as <span class="code">LiteralValue</span>.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">visitGetExpr — <span class="code">.eat</span></div>
+        <div class="step-detail">
+          1. Evaluates object → gets <span class="code">shared_ptr&lt;LoxInstance&gt;</span><br>
+          2. Calls <span class="code">instance->get("eat")</span><br>
+          3. Not in fields → checks <span class="code">klass->findMethod("eat")</span><br>
+          4. Found → <span class="code">static_pointer_cast&lt;LoxCallable&gt;</span><br>
+          5. <span class="green">Returns shared_ptr&lt;LoxCallable&gt;</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">visitCallExpr — inner call <span class="code">.eat()</span></div>
+        <div class="step-detail">
+          1. callee = result of visitGetExpr = <span class="code">shared_ptr&lt;LoxCallable&gt;</span><br>
+          2. <span class="code">holds_alternative</span> check → ✅ passes<br>
+          3. arity check → 0 == 0 ✅<br>
+          4. <span class="code">function->call(*this, {})</span>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">LoxFunction::call() — executes body</div>
+        <div class="step-detail">
+          1. Creates new <span class="code">Environment</span> with closure as parent<br>
+          2. Binds params (none here)<br>
+          3. <span class="code">executeBlock(body, env)</span><br>
+          4. Executes <span class="code">print "Crunch crunch crunch!"</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-down">↓</div>
+
+<!-- PHASE 5: OUTPUT -->
+<div class="phase p5" id="ph5">
+  <div class="phase-header" onclick="toggle('ph5')">
+    <span class="phase-title">🖥️ Phase 5 — Output</span>
+    <span class="phase-tag">stdout</span>
+    <span class="toggle-icon">▾</span>
+  </div>
+  <div class="phase-body">
+    <div class="step">
+      <div class="step-num">✓</div>
+      <div class="step-content">
+        <div class="step-title"><span class="green">visitPrintStmt</span> → stringify → stdout</div>
+        <div class="step-detail">Calls <span class="code">stringify(value)</span> → <span class="code">std::cout</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="final-box">
+  <div class="result">Crunch crunch crunch!</div>
+  <div style="color:#8b949e; font-size:0.8rem; margin-top:6px;">Program exits cleanly</div>
+</div>
+
+<script>
+function toggle(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('collapsed');
+  const icon = el.querySelector('.toggle-icon');
+  icon.textContent = el.classList.contains('collapsed') ? '▸' : '▾';
+}
+</script>
+</body>
+</html>

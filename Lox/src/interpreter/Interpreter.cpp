@@ -1,5 +1,6 @@
 ﻿#include "interpreter/Interpreter.h"
 #include "interpreter/LoxCallable.h"
+#include "interpreter/LoxInstance.h"
 #include "core/Error.h"
 #include "interpreter/Return.h"
 #include <iostream>
@@ -74,7 +75,7 @@ void Interpreter::visitFuncStmt(const FuncStmt& stmt) {
 	// Wrap into a LoxFunction, and cast that into a shared_ptr, as env constructor takes a literal value, which has a shared_ptr<LoxCallable>
 	// stmt is casted into LoxFunction, which is a LoxCallable, then a shared_ptr is made of it.
 
-	auto function = std::make_shared<LoxFunction>(stmt, environment);
+	auto function = std::make_shared<LoxFunction>(stmt, environment, false);
 	if (environment == globalEnv) {
 		environment->define(stmt.name.lexeme, function);
 	} else {
@@ -87,6 +88,20 @@ void Interpreter::visitReturnStmt(const ReturnStmt& stmt) {
 	if (stmt.value) value = evaluate(*stmt.value);
 
 	throw ReturnException(value);
+}
+
+void Interpreter::visitClassStmt(const ClassStmt& stmt) {
+	environment->define(stmt.name.lexeme, nullptr);
+
+	std::unordered_map<std::string, std::shared_ptr<LoxFunction>> methods;
+
+	for (const auto& method : stmt.methods) {
+		auto function = std::make_shared<LoxFunction>(*method, environment, method->name.lexeme == "init");
+		methods[method->name.lexeme] = function;
+	}
+
+	auto klass = make_shared<LoxClass>(stmt.name.lexeme, methods);
+	environment->assign(stmt.name, klass);
 }
 
 LiteralValue Interpreter::visitAssignExpr(const Assign& expr) {
@@ -245,6 +260,32 @@ LiteralValue Interpreter::visitLambdaExpr(const LambdaExpr& expr) {
 	return std::make_shared<LoxLambda>(expr, environment);
 }
 
+LiteralValue Interpreter::visitGetExpr(const GetExpr& expr) {
+	LiteralValue object = evaluate(*expr.object);
+	if(!std::holds_alternative<std::shared_ptr<LoxInstance>>(object)) {
+		throw RuntimeError(expr.name, "Only instances have properties.");
+	}
+
+	// std::get<T>(variant) — extracts type T from a variant (LiteralValue), well not needed as we are already checking if it holds that type, in our holds_alternative check.
+	auto instance = std::get<std::shared_ptr<LoxInstance>>(object);
+	return instance->get(expr.name);
+}
+
+LiteralValue Interpreter::visitSetExpr(const SetExpr& expr) {
+	LiteralValue object = evaluate(*expr.object);
+	if (!std::holds_alternative<std::shared_ptr<LoxInstance>>(object)) {
+		throw RuntimeError(expr.name, "Only instances have properties.");
+	}
+
+	LiteralValue value = evaluate(*expr.value);
+	std::get<std::shared_ptr<LoxInstance>>(object)->set(expr.name, value);
+	return value;
+}
+
+LiteralValue Interpreter::visitThisExpr(const ThisExpr& expr) {
+	return lookUpVariable(expr.keyword, expr);
+}
+
 
 // Private helper methods
 
@@ -352,6 +393,8 @@ std::string Interpreter::stringify(LiteralValue value) {
 		return text;
 	}
 	if (std::holds_alternative<bool>(value)) return std::get<bool>(value) ? "true" : "false";
+	if (std::holds_alternative<std::shared_ptr<LoxCallable>>(value)) return std::get<std::shared_ptr<LoxCallable>>(value)->toString();
+	if (std::holds_alternative<std::shared_ptr<LoxInstance>>(value)) return std::get<std::shared_ptr<LoxInstance>>(value)->toString();
 	return std::get<std::string>(value);
 }
 

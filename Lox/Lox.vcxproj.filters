@@ -55,6 +55,9 @@
   <ClCompile Include="src/interpreter/LoxCallable.cpp">
     <Filter>Source Files\interpreter</Filter>
   </ClCompile>
+  <ClCompile Include="src/interpreter/LoxInstance.cpp">
+    <Filter>Source Files\interpreter</Filter>
+  </ClCompile>
   <ClCompile Include="src/interpreter/Resolver.cpp">
     <Filter>Source Files\interpreter</Filter>
   </ClCompile>
@@ -94,6 +97,9 @@
     <Filter>Header Files\interpreter</Filter>
   </ClInclude>
   <ClInclude Include="include/interpreter/LoxCallable.h">
+    <Filter>Header Files\interpreter</Filter>
+  </ClInclude>
+  <ClInclude Include="include/interpreter/LoxInstance.h">
     <Filter>Header Files\interpreter</Filter>
   </ClInclude>
   <ClInclude Include="include/interpreter/Return.h">
